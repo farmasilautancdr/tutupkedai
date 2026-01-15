@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TutupKedai</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         :root {
@@ -17,73 +19,81 @@
         }
 
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            padding: 10px; margin: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            padding: 15px; margin: 0; 
             background: var(--bg); 
-            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+            display: flex; justify-content: center; align-items: flex-start; min-height: 100vh;
+            touch-action: manipulation;
         }
 
         .card { 
             background: var(--card-bg); 
             padding: 24px; 
-            border-radius: 28px; 
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); 
+            border-radius: 32px; 
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); 
             width: 100%; max-width: 440px;
+            margin-top: 10px;
         }
 
-        h2 { text-align: center; color: var(--primary); margin-bottom: 8px; font-weight: 800; }
-        .subtitle { text-align: center; font-size: 11px; color: #94a3b8; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
-
-        .btn-snap { 
-            background: var(--primary); color: white; border: none; padding: 18px; 
-            width: 100%; border-radius: 16px; font-size: 18px; font-weight: bold; 
-            cursor: pointer; display: block; text-align: center; transition: 0.2s;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-        }
-
-        .btn-snap:active { transform: scale(0.97); }
-
-        .status { text-align: center; margin: 15px 0; font-size: 14px; color: #64748b; font-weight: 500; min-height: 20px; }
+        header { text-align: center; margin-bottom: 20px; }
+        h2 { color: var(--primary); margin: 0; font-weight: 800; font-size: 28px; }
         
         .counter-badge {
-            background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;
+            display: inline-block;
+            background: #e2e8f0; color: #475569; padding: 6px 16px; 
+            border-radius: 20px; font-size: 13px; font-weight: 700;
+            margin-top: 8px;
         }
 
+        .btn-snap { 
+            background: var(--primary); color: white; border: none; padding: 20px; 
+            width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: transform 0.1s;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            margin: 0 auto;
+        }
+
+        .btn-snap:active { transform: scale(0.96); }
+
+        .status { text-align: center; margin: 15px 0; font-size: 14px; color: #64748b; font-weight: 600; min-height: 20px; }
+        
         .result-box { margin-top: 10px; animation: fadeIn 0.4s ease-out; }
-        .verify-label { font-size: 10px; font-weight: 700; color: #64748b; margin-bottom: 4px; display: block; text-transform: uppercase; }
-        .input-row { position: relative; margin-bottom: 12px; }
+        .verify-label { font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
+        .input-row { position: relative; margin-bottom: 15px; }
         
         .digital-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 12px;
             background: #f1f5f9;
-            padding: 12px;
-            border-radius: 16px;
-            margin-bottom: 12px;
+            padding: 15px;
+            border-radius: 20px;
+            margin-bottom: 15px;
         }
 
         input[type="number"] {
-            width: 100%; padding: 10px 12px; border-radius: 10px; border: 2px solid #e2e8f0;
-            font-size: 16px; font-weight: 600; box-sizing: border-box; outline: none; transition: 0.2s;
-            background: #fff;
+            width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0;
+            font-size: 18px; font-weight: 700; box-sizing: border-box; outline: none; transition: 0.2s;
+            background: #fff; appearance: none;
+            -webkit-appearance: none;
         }
 
         input[type="number"]:focus { border-color: var(--primary); background: #f0f7ff; }
 
         .total-card {
-            background: #ecfdf5; padding: 20px; border-radius: 20px; 
+            background: #ecfdf5; padding: 24px; border-radius: 24px; 
             border: 2px solid var(--success); margin-top: 10px; text-align: center;
         }
 
-        .total-label { color: var(--success); font-weight: 700; font-size: 14px; text-transform: uppercase; }
-        #resBank { color: var(--success); font-size: 32px; font-weight: 800; display: block; margin-top: 4px; }
+        .total-label { color: var(--success); font-weight: 800; font-size: 15px; text-transform: uppercase; }
+        #resBank { color: var(--success); font-size: 36px; font-weight: 900; display: block; margin-top: 4px; }
 
-        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
-        .btn-undo { flex: 1; background: #fff; color: var(--danger); border: 2px solid var(--danger); padding: 12px; border-radius: 12px; cursor: pointer; font-weight: 600; }
-        .btn-clear { flex: 2; background: #f1f5f9; color: #64748b; border: none; padding: 12px; border-radius: 12px; cursor: pointer; font-weight: 600; }
+        .btn-group { display: flex; gap: 12px; margin-top: 20px; justify-content: center; }
+        .btn-undo { flex: 1; background: #fff; color: var(--danger); border: 2px solid var(--danger); padding: 14px; border-radius: 14px; cursor: pointer; font-weight: 700; font-size: 14px; }
+        .btn-clear { flex: 2; background: #f1f5f9; color: #64748b; border: none; padding: 14px; border-radius: 14px; cursor: pointer; font-weight: 700; font-size: 14px; }
 
-        .float-hint { font-size: 10px; color: #94a3b8; font-weight: normal; margin-left: 5px; }
+        .float-hint { font-size: 11px; color: #94a3b8; font-weight: 600; margin-left: 4px; }
 
         input[type="file"] { display: none; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -92,12 +102,14 @@
 <body>
 
 <div class="card">
-    <h2>TutupKedai</h2>
-    <div class="subtitle">Detailed Batch <span id="receiptCount" class="counter-badge">0 Scanned</span></div>
+    <header>
+        <h2>TutupKedai</h2>
+        <span id="receiptCount" class="counter-badge">0 SCANNED</span>
+    </header>
     
     <label class="btn-snap">
-        📷 SNAP RECEIPT
-        <input type="file" id="imageInput" accept="image/*" capture="environment" onchange="runOCR()">
+        📷 &nbsp; SNAP OR CHOOSE RECEIPT
+        <input type="file" id="imageInput" accept="image/*" onchange="runOCR()">
     </label>
     
     <div id="status" class="status">Ready</div>
@@ -108,30 +120,30 @@
             <input type="number" id="editTotalCount" step="0.01" value="0.00" oninput="calculateFinal()">
         </div>
 
-        <span class="verify-label">Digital Breakdown (Accumulated)</span>
+        <span class="verify-label">Digital Breakdown</span>
         <div class="digital-grid">
             <div class="input-col">
-                <span class="verify-label" style="font-size: 8px;">QR Pay</span>
+                <span class="verify-label" style="font-size: 9px;">QR Pay</span>
                 <input type="number" id="val_QRPAY" step="0.01" value="0.00" oninput="calculateFinal()">
             </div>
             <div class="input-col">
-                <span class="verify-label" style="font-size: 8px;">Visa</span>
+                <span class="verify-label" style="font-size: 9px;">Visa</span>
                 <input type="number" id="val_VISA" step="0.01" value="0.00" oninput="calculateFinal()">
             </div>
             <div class="input-col">
-                <span class="verify-label" style="font-size: 8px;">Master</span>
+                <span class="verify-label" style="font-size: 9px;">Master</span>
                 <input type="number" id="val_MASTER" step="0.01" value="0.00" oninput="calculateFinal()">
             </div>
             <div class="input-col">
-                <span class="verify-label" style="font-size: 8px;">Bank Transfer</span>
+                <span class="verify-label" style="font-size: 9px;">Bank Transfer</span>
                 <input type="number" id="val_TRANSFER" step="0.01" value="0.00" oninput="calculateFinal()">
             </div>
             <div class="input-col">
-                <span class="verify-label" style="font-size: 8px;">Grab/IPay88</span>
+                <span class="verify-label" style="font-size: 9px;">Grab/IPay88</span>
                 <input type="number" id="val_EWALLET" step="0.01" value="0.00" oninput="calculateFinal()">
             </div>
             <div class="input-col">
-                <span class="verify-label" style="font-size: 8px;">Voucher</span>
+                <span class="verify-label" style="font-size: 9px;">Voucher</span>
                 <input type="number" id="val_VOUCHER" step="0.01" value="0.00" oninput="calculateFinal()">
             </div>
         </div>
@@ -171,7 +183,7 @@ async function runOCR() {
     const file = document.getElementById('imageInput').files[0];
     if (!file) return;
     const status = document.getElementById('status');
-    status.innerText = "Scanning... ⏳";
+    status.innerText = "Processing... ⏳";
 
     try {
         const worker = await Tesseract.createWorker('eng');
@@ -181,10 +193,12 @@ async function runOCR() {
         const data = parseReceipt(text);
         scanHistory.push(data);
         updateFields();
-        status.innerText = "Added Scan #" + scanHistory.length + " ✅";
+        status.innerText = "Success! Added Scan #" + scanHistory.length + " ✅";
     } catch (e) {
-        status.innerText = "❌ Scan failed.";
+        status.innerText = "❌ Scan failed. Try again.";
     }
+    // Clear input so same file can be selected again if needed
+    document.getElementById('imageInput').value = "";
 }
 
 function parseReceipt(text) {
@@ -219,7 +233,7 @@ function updateFields() {
         document.getElementById(id).value = digitalTotals[id].toFixed(2);
     }
     
-    document.getElementById('receiptCount').innerText = scanHistory.length + " Scanned";
+    document.getElementById('receiptCount').innerText = scanHistory.length + " SCANNED";
     document.getElementById('editFloat').value = (scanHistory.length * 300).toFixed(2);
     document.getElementById('floatCalc').innerText = "(" + scanHistory.length + " × 300)";
 
@@ -243,12 +257,12 @@ function undoLastScan() {
     if (scanHistory.length > 0) {
         scanHistory.pop();
         updateFields();
-        document.getElementById('status').innerText = "Undone ↩️";
+        document.getElementById('status').innerText = "Last scan removed ↩️";
     }
 }
 
 function confirmClear() {
-    if(confirm("Reset all data?")) location.reload();
+    if(confirm("Are you sure you want to reset everything?")) location.reload();
 }
 </script>
 
