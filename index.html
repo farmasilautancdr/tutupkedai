@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TutupKedai</title>
+    <title>TutupKedai PRO</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -15,32 +15,25 @@
         h2 { color: var(--primary); margin: 0; font-weight: 800; font-size: 32px; }
         .counter-badge { display: inline-block; background: #e2e8f0; color: #475569; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; }
         
-        #reviewModal { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 15px; box-sizing: border-box;
-        }
-        .modal-content { 
-            background: white; width: 100%; max-width: 400px; border-radius: 28px; padding: 20px; 
-            max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); 
-        }
+        #reviewModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; padding: 15px; box-sizing: border-box; }
+        .modal-content { background: white; width: 100%; max-width: 400px; border-radius: 28px; padding: 20px; max-height: 90vh; overflow-y: auto; }
         .modal-header { font-weight: 800; font-size: 20px; color: var(--primary); margin-bottom: 15px; text-align: center; }
-
+        
         .progress-container { width: 100%; height: 8px; background: #e2e8f0; border-radius: 10px; margin: 10px 0; display: none; overflow: hidden; }
         #progressBar { width: 0%; height: 100%; background: var(--primary); transition: width 0.3s ease; }
         
         .action-area { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; align-items: center; }
-        .btn-snap { background: var(--primary); color: white; border: none; padding: 18px; width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .btn-snap { background: var(--primary); color: white; border: none; padding: 18px; width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; }
+        /* Style for the Manual Button */
+        .btn-manual { background: #fff; color: var(--primary); border: 2px solid var(--primary); padding: 12px; width: 100%; border-radius: 18px; font-size: 14px; font-weight: 800; cursor: pointer; }
         
         .status { text-align: center; margin: 5px 0; font-size: 14px; color: #64748b; font-weight: 600; min-height: 20px; }
         .digital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f1f5f9; padding: 15px; border-radius: 20px; margin-bottom: 15px; }
         input[type="number"] { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 18px; font-weight: 700; box-sizing: border-box; outline: none; background: #fff; }
-        
         .total-card { background: #ecfdf5; padding: 20px; border-radius: 24px; border: 2px solid var(--success); text-align: center; }
         #resBank { color: var(--success); font-size: 32px; font-weight: 900; display: block; }
-        
         .btn-confirm { background: var(--success); color: white; border: none; padding: 16px; width: 100%; border-radius: 14px; font-weight: 800; font-size: 16px; margin-top: 10px; cursor: pointer; }
         .btn-cancel { background: #fee2e2; color: var(--danger); border: none; padding: 12px; width: 100%; border-radius: 14px; font-weight: 700; margin-top: 8px; cursor: pointer; }
-        
         .btn-group { display: flex; gap: 10px; margin-top: 15px; }
         .btn-undo { flex: 1; background: #fff; color: var(--danger); border: 2px solid var(--danger); padding: 12px; border-radius: 12px; font-weight: 700; }
         .btn-clear { flex: 2; background: #f1f5f9; color: #64748b; border: none; padding: 12px; border-radius: 12px; font-weight: 700; }
@@ -51,7 +44,7 @@
 
 <div id="reviewModal">
     <div class="modal-content">
-        <div class="modal-header">🔍 Review & Edit Scan</div>
+        <div class="modal-header">🔍 Entry Form</div>
         <div style="margin-bottom:15px;">
             <label style="font-size:11px; font-weight:800; color: #475569;">TOTAL SALES (BILL AMOUNT)</label>
             <input type="number" id="tempTotal" step="0.01" style="border-color: var(--primary); background: #eff6ff;">
@@ -65,8 +58,8 @@
             <div><span style="font-size:9px; font-weight:700;">IPAY88</span><input type="number" id="temp_val_IPAY" step="0.01"></div>
             <div><span style="font-size:9px; font-weight:700;">VOUCHER</span><input type="number" id="temp_val_VOUCHER" step="0.01"></div>
         </div>
-        <button class="btn-confirm" onclick="confirmScan()">✅ Add to Daily Total</button>
-        <button class="btn-cancel" onclick="closeModal()">❌ Discard Scan</button>
+        <button class="btn-confirm" onclick="confirmScan()">✅ Confirm</button>
+        <button class="btn-cancel" onclick="closeModal()">❌ Discard</button>
     </div>
 </div>
 
@@ -75,15 +68,13 @@
         <h2>TutupKedai</h2>
         <span id="receiptCount" class="counter-badge">0 SCANNED</span>
     </header>
-    
     <div class="action-area">
         <label class="btn-snap">📷 &nbsp; SNAP RECEIPT<input type="file" accept="image/*" capture="environment" onchange="processImage(this)"></label>
+        <button class="btn-manual" onclick="openManual()">✍️ MANUAL ENTRY</button>
     </div>
-    
     <div class="progress-container" id="progressWrapper"><div id="progressBar"></div></div>
     <div id="status" class="status">Ready</div>
     <canvas id="pCanvas"></canvas>
-
     <div id="results">
         <div style="margin-bottom:10px;">
             <span style="font-size:11px; font-weight:700; color:#64748b;">ACCUMULATED SALES</span>
@@ -97,10 +88,6 @@
             <div><span style="font-size:9px; font-weight:700;">GRAB</span><input type="number" id="val_GRAB" value="0.00" readonly></div>
             <div><span style="font-size:9px; font-weight:700;">IPAY88</span><input type="number" id="val_IPAY" value="0.00" readonly></div>
             <div><span style="font-size:9px; font-weight:700;">VOUCHER</span><input type="number" id="val_VOUCHER" value="0.00" readonly></div>
-        </div>
-        <div style="margin-bottom:10px;">
-            <span style="font-size:11px; font-weight:700; color:#64748b;">TOTAL FLOAT (RM300 x Count)</span>
-            <input type="number" id="editFloat" value="0.00" readonly>
         </div>
         <div class="total-card">
             <span style="font-size:14px; font-weight:800; color:var(--success);">FINAL BANK DEPOSIT</span>
@@ -124,67 +111,66 @@ let worker = null;
 
 window.onload = updateFields;
 
+// Function to open the form with empty values
+function openManual() {
+    document.getElementById('tempTotal').value = "0.00";
+    Object.values(digitalKeysMap).forEach(id => {
+        document.getElementById('temp_' + id).value = "0.00";
+    });
+    document.getElementById('reviewModal').style.display = "flex";
+}
+
 async function processImage(input) {
     const file = input.files[0];
     if (!file) return;
     const status = document.getElementById('status'), pWrapper = document.getElementById('progressWrapper'), pBar = document.getElementById('progressBar');
-    status.innerText = "Analyzing Receipt..."; pWrapper.style.display = "block"; pBar.style.width = "10%";
+    status.innerText = "Processing Image..."; pWrapper.style.display = "block"; pBar.style.width = "10%";
+    
     const img = new Image();
     img.src = URL.createObjectURL(file);
     img.onload = async () => {
-        const canvas = document.getElementById('pCanvas'), ctx = canvas.getContext('2d'), scale = 1200 / img.width;
-        canvas.width = 1200; canvas.height = img.height * scale;
-        // High contrast filter for comma detection
-        ctx.filter = 'grayscale(1) contrast(1.5) brightness(1.1)'; 
+        const canvas = document.getElementById('pCanvas'), ctx = canvas.getContext('2d'), scale = 1500 / img.width;
+        canvas.width = 1500; canvas.height = img.height * scale;
+        ctx.filter = 'grayscale(1) contrast(1.6) brightness(1.1)'; 
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
         if (!worker) {
-            worker = await Tesseract.createWorker('eng', 1, { 
-                logger: m => { if (m.status === 'recognizing text') pBar.style.width = (m.progress * 100) + "%"; } 
-            });
-            await worker.setParameters({ 
-                tessedit_char_whitelist: '0123456789.ABCDEFGHIJKLMNOPQRSTUVWXYZ,: ' 
-            });
+            worker = await Tesseract.createWorker('eng', 1, { logger: m => { if (m.status === 'recognizing text') pBar.style.width = (m.progress * 100) + "%"; } });
+            await worker.setParameters({ tessedit_char_whitelist: '0123456789.ABCDEFGHIJKLMNOPQRSTUVWXYZ,: ' });
         }
-        const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.8));
+        
+        const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.9));
         parseAndShow(text);
+        
         status.innerText = "Ready"; pWrapper.style.display = "none"; input.value = ""; 
     };
 }
 
 function parseAndShow(text) {
-    // Aggressive cleaning: Remove commas immediately
-    const cleanText = text.replace(/,/g, '');
-    const lines = cleanText.toUpperCase().split('\n').map(l => l.trim());
-    
-    let capture = false;
+    let cleanText = text.replace(/,/g, '').replace(/\s+\./g, '.').toUpperCase();
+    const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     let results = { total: 0, digital: {} };
 
+    for (let i = lines.length - 1; i >= 0; i--) {
+        if (lines[i].includes("TOTAL") && lines[i].includes("COUNT")) {
+            let combined = lines.slice(i, i + 3).join(" ");
+            let matches = combined.match(/\d+\.\d{2}/g);
+            if (matches) { results.total = parseFloat(matches[0]); break; }
+        }
+    }
+
+    let inZone = false;
     for (let i = 0; i < lines.length; i++) {
-        let line = lines[i];
-
-        if (line.includes("BANK TRANSFER")) capture = true;
-
-        if (capture) {
+        if (lines[i].includes("BANK TRANSFER")) inZone = true;
+        if (inZone) {
             for (let [key, id] of Object.entries(digitalKeysMap)) {
-                if (line.includes(key)) {
-                    // Only match numbers with decimals to avoid picking up Qty
-                    const m = line.match(/\d+\.\d{2}/g);
-                    if (m) results.digital[id] = parseFloat(m[m.length - 1]);
+                if (lines[i].includes(key)) {
+                    let matches = lines[i].match(/\d+\.\d{2}/g);
+                    if (matches) { results.digital[id] = parseFloat(matches[matches.length - 1]); }
                 }
             }
         }
-
-        // Logic for TOTAL COUNT (Checks current and next line)
-        if (line.includes("TOTAL") && line.includes("COUNT")) {
-            let m = line.match(/\d+\.\d{2}/g);
-            if (!m && i + 1 < lines.length) {
-                m = lines[i+1].match(/\d+\.\d{2}/g);
-            }
-
-            if (m) results.total = parseFloat(m[m.length - 1]);
-            capture = false;
-        }
+        if (lines[i].includes("TOTAL COUNT")) inZone = false;
     }
 
     document.getElementById('tempTotal').value = results.total.toFixed(2);
@@ -213,11 +199,7 @@ function confirmScan() {
 }
 
 function closeModal() { document.getElementById('reviewModal').style.display = "none"; }
-
-function saveAndRefresh() {
-    localStorage.setItem('tutupKedaiData', JSON.stringify(scanHistory));
-    updateFields();
-}
+function saveAndRefresh() { localStorage.setItem('tutupKedaiData', JSON.stringify(scanHistory)); updateFields(); }
 
 function updateFields() {
     let tCount = 0, dTotals = { val_TRANSFER:0, val_GRAB:0, val_IPAY:0, val_MASTER:0, val_QRPAY:0, val_VISA:0, val_VOUCHER:0 };
@@ -228,22 +210,21 @@ function updateFields() {
     document.getElementById('editTotalCount').value = tCount.toFixed(2);
     for (let id in dTotals) document.getElementById(id).value = dTotals[id].toFixed(2);
     document.getElementById('receiptCount').innerText = scanHistory.length + " SCANNED";
-    document.getElementById('editFloat').value = (scanHistory.length * 300).toFixed(2);
     calculateFinal();
 }
 
 function calculateFinal() {
     const total = parseFloat(document.getElementById('editTotalCount').value) || 0;
-    const float = parseFloat(document.getElementById('editFloat').value) || 0;
+    const float = (scanHistory.length * 300);
     let digi = 0;
-    Object.keys(digitalKeysMap).forEach(key => {
-        digi += parseFloat(document.getElementById(digitalKeysMap[key]).value) || 0;
+    Object.values(digitalKeysMap).forEach(id => {
+        digi += parseFloat(document.getElementById(id).value) || 0;
     });
     document.getElementById('resBank').innerText = "RM " + (total - digi - float).toFixed(2);
 }
 
 function undoLastScan() { if (scanHistory.length > 0) { scanHistory.pop(); saveAndRefresh(); } }
-function confirmClear() { if(confirm("Clear today's data?")) { scanHistory = []; localStorage.removeItem('tutupKedaiData'); location.reload(); } }
+function confirmClear() { if(confirm("Reset all?")) { scanHistory = []; localStorage.removeItem('tutupKedaiData'); location.reload(); } }
 </script>
 </body>
 </html>
