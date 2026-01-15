@@ -132,12 +132,19 @@ async function processImage(input) {
     const img = new Image();
     img.src = URL.createObjectURL(file);
     img.onload = async () => {
-        const canvas = document.getElementById('pCanvas'), ctx = canvas.getContext('2d'), scale = 1000 / img.width;
-        canvas.width = 1000; canvas.height = img.height * scale;
-        ctx.filter = 'grayscale(1) contrast(1.4)'; ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const canvas = document.getElementById('pCanvas'), ctx = canvas.getContext('2d'), scale = 1200 / img.width;
+        canvas.width = 1200; canvas.height = img.height * scale;
+        // High contrast filter for comma detection
+        ctx.filter = 'grayscale(1) contrast(1.5) brightness(1.1)'; 
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
         if (!worker) {
-            worker = await Tesseract.createWorker('eng', 1, { logger: m => { if (m.status === 'recognizing text') pBar.style.width = (m.progress * 100) + "%"; } });
-            await worker.setParameters({ tessedit_char_whitelist: '0123456789.ABCDEFGHIJKLMNOPQRSTUVWXYZ: ' });
+            worker = await Tesseract.createWorker('eng', 1, { 
+                logger: m => { if (m.status === 'recognizing text') pBar.style.width = (m.progress * 100) + "%"; } 
+            });
+            await worker.setParameters({ 
+                tessedit_char_whitelist: '0123456789.ABCDEFGHIJKLMNOPQRSTUVWXYZ,: ' 
+            });
         }
         const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.8));
         parseAndShow(text);
@@ -146,44 +153,40 @@ async function processImage(input) {
 }
 
 function parseAndShow(text) {
-    const lines = text.toUpperCase().replace(/,/g, '').split('\n').map(l => l.trim());
+    // Aggressive cleaning: Remove commas immediately
+    const cleanText = text.replace(/,/g, '');
+    const lines = cleanText.toUpperCase().split('\n').map(l => l.trim());
+    
     let capture = false;
     let results = { total: 0, digital: {} };
 
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
 
-        // Start looking after Bank Transfer line
         if (line.includes("BANK TRANSFER")) capture = true;
 
-        // Extract digital amounts if we are in the capture zone
         if (capture) {
             for (let [key, id] of Object.entries(digitalKeysMap)) {
                 if (line.includes(key)) {
+                    // Only match numbers with decimals to avoid picking up Qty
                     const m = line.match(/\d+\.\d{2}/g);
                     if (m) results.digital[id] = parseFloat(m[m.length - 1]);
                 }
             }
         }
 
-        // STOP & CAPTURE TOTAL COUNT
-        if (line.includes("TOTAL COUNT")) {
-            // Check current line first
+        // Logic for TOTAL COUNT (Checks current and next line)
+        if (line.includes("TOTAL") && line.includes("COUNT")) {
             let m = line.match(/\d+\.\d{2}/g);
-            
-            // If not found on current line, check the next line (common in OCR)
             if (!m && i + 1 < lines.length) {
                 m = lines[i+1].match(/\d+\.\d{2}/g);
             }
 
-            if (m) {
-                results.total = parseFloat(m[m.length - 1]);
-            }
-            capture = false; // Stop scanning digital keys once total is found
+            if (m) results.total = parseFloat(m[m.length - 1]);
+            capture = false;
         }
     }
 
-    // Modal fill
     document.getElementById('tempTotal').value = results.total.toFixed(2);
     for (let id of Object.values(digitalKeysMap)) {
         document.getElementById('temp_' + id).value = (results.digital[id] || 0).toFixed(2);
@@ -244,4 +247,3 @@ function confirmClear() { if(confirm("Clear today's data?")) { scanHistory = [];
 </script>
 </body>
 </html>
-
