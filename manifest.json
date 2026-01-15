@@ -1,0 +1,21 @@
+{
+  "name": "TutupKedai Batch",
+  "short_name": "TutupKedai",
+  "description": "Multi-receipt cash management and bank deposit calculator",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
