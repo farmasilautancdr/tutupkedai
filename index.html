@@ -10,9 +10,9 @@
     <style>
         :root { --primary: #2563eb; --success: #059669; --danger: #dc2626; --bg: #f8fafc; --card-bg: #ffffff; }
         body { font-family: -apple-system, sans-serif; padding: 10px; margin: 0; background: var(--bg); display: flex; justify-content: center; min-height: 100vh; touch-action: manipulation; }
-        .card { background: var(--card-bg); padding: 24px; border-radius: 32px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); width: 100%; max-width: 440px; margin-top: 10px; box-sizing: border-box; }
+        .card { background: var(--card-bg); padding: 24px; border-radius: 32px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); width: 100%; max-width: 440px; margin-top: 10px; box-sizing: border-box; position: relative; }
         header { text-align: center; margin-bottom: 20px; }
-        h2 { color: var(--primary); margin: 0; font-weight: 800; font-size: 32px; }
+        h2 { color: var(--primary); margin: 0; font-weight: 800; font-size: 32px; cursor: pointer; }
         .counter-badge { display: inline-block; background: #e2e8f0; color: #475569; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; }
         
         #reviewModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; padding: 15px; box-sizing: border-box; }
@@ -24,19 +24,23 @@
         
         .action-area { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; align-items: center; }
         .btn-snap { background: var(--primary); color: white; border: none; padding: 18px; width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; }
-        /* Style for the Manual Button */
         .btn-manual { background: #fff; color: var(--primary); border: 2px solid var(--primary); padding: 12px; width: 100%; border-radius: 18px; font-size: 14px; font-weight: 800; cursor: pointer; }
         
         .status { text-align: center; margin: 5px 0; font-size: 14px; color: #64748b; font-weight: 600; min-height: 20px; }
         .digital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f1f5f9; padding: 15px; border-radius: 20px; margin-bottom: 15px; }
         input[type="number"] { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 18px; font-weight: 700; box-sizing: border-box; outline: none; background: #fff; }
+        
         .total-card { background: #ecfdf5; padding: 20px; border-radius: 24px; border: 2px solid var(--success); text-align: center; }
         #resBank { color: var(--success); font-size: 32px; font-weight: 900; display: block; }
+        
         .btn-confirm { background: var(--success); color: white; border: none; padding: 16px; width: 100%; border-radius: 14px; font-weight: 800; font-size: 16px; margin-top: 10px; cursor: pointer; }
         .btn-cancel { background: #fee2e2; color: var(--danger); border: none; padding: 12px; width: 100%; border-radius: 14px; font-weight: 700; margin-top: 8px; cursor: pointer; }
         .btn-group { display: flex; gap: 10px; margin-top: 15px; }
         .btn-undo { flex: 1; background: #fff; color: var(--danger); border: 2px solid var(--danger); padding: 12px; border-radius: 12px; font-weight: 700; }
         .btn-clear { flex: 2; background: #f1f5f9; color: #64748b; border: none; padding: 12px; border-radius: 12px; font-weight: 700; }
+        
+        /* Debug Window Style */
+        #debugWin { display: none; background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; margin-top: 15px; border-radius: 10px; overflow-x: auto; white-space: pre-wrap; max-height: 150px; }
         input[type="file"], canvas { display: none; }
     </style>
 </head>
@@ -65,16 +69,21 @@
 
 <div class="card">
     <header>
-        <h2>TutupKedai</h2>
+        <h2 onclick="toggleDebug()">TutupKedai</h2>
         <span id="receiptCount" class="counter-badge">0 SCANNED</span>
     </header>
     <div class="action-area">
         <label class="btn-snap">📷 &nbsp; SNAP RECEIPT<input type="file" accept="image/*" capture="environment" onchange="processImage(this)"></label>
         <button class="btn-manual" onclick="openManual()">✍️ MANUAL ENTRY</button>
     </div>
+    
     <div class="progress-container" id="progressWrapper"><div id="progressBar"></div></div>
     <div id="status" class="status">Ready</div>
+    
+    <div id="debugWin">DEBUG: Waiting for scan...</div>
+    
     <canvas id="pCanvas"></canvas>
+    
     <div id="results">
         <div style="margin-bottom:10px;">
             <span style="font-size:11px; font-weight:700; color:#64748b;">ACCUMULATED SALES</span>
@@ -111,7 +120,11 @@ let worker = null;
 
 window.onload = updateFields;
 
-// Function to open the form with empty values
+function toggleDebug() {
+    const dbg = document.getElementById('debugWin');
+    dbg.style.display = dbg.style.display === 'block' ? 'none' : 'block';
+}
+
 function openManual() {
     document.getElementById('tempTotal').value = "0.00";
     Object.values(digitalKeysMap).forEach(id => {
@@ -124,22 +137,32 @@ async function processImage(input) {
     const file = input.files[0];
     if (!file) return;
     const status = document.getElementById('status'), pWrapper = document.getElementById('progressWrapper'), pBar = document.getElementById('progressBar');
-    status.innerText = "Processing Image..."; pWrapper.style.display = "block"; pBar.style.width = "10%";
+    status.innerText = "Scanning..."; pWrapper.style.display = "block"; pBar.style.width = "10%";
     
     const img = new Image();
     img.src = URL.createObjectURL(file);
     img.onload = async () => {
-        const canvas = document.getElementById('pCanvas'), ctx = canvas.getContext('2d'), scale = 1500 / img.width;
-        canvas.width = 1500; canvas.height = img.height * scale;
-        ctx.filter = 'grayscale(1) contrast(1.6) brightness(1.1)'; 
+        const canvas = document.getElementById('pCanvas'), ctx = canvas.getContext('2d');
+        // High resolution for small receipt text
+        const targetWidth = 1600;
+        const scale = targetWidth / img.width;
+        canvas.width = targetWidth; 
+        canvas.height = img.height * scale;
+        
+        ctx.filter = 'grayscale(1) contrast(1.5) brightness(1.1)'; 
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
         if (!worker) {
-            worker = await Tesseract.createWorker('eng', 1, { logger: m => { if (m.status === 'recognizing text') pBar.style.width = (m.progress * 100) + "%"; } });
-            await worker.setParameters({ tessedit_char_whitelist: '0123456789.ABCDEFGHIJKLMNOPQRSTUVWXYZ,: ' });
+            worker = await Tesseract.createWorker('eng', 1, { 
+                logger: m => { if (m.status === 'recognizing text') pBar.style.width = (m.progress * 100) + "%"; } 
+            });
+            await worker.setParameters({ 
+                tessedit_char_whitelist: '0123456789.ABCDEFGHIJKLMNOPQRSTUVWXYZ,: ' 
+            });
         }
         
-        const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.9));
+        const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.8));
+        document.getElementById('debugWin').innerText = "RAW OCR:\n" + text;
         parseAndShow(text);
         
         status.innerText = "Ready"; pWrapper.style.display = "none"; input.value = ""; 
@@ -147,32 +170,47 @@ async function processImage(input) {
 }
 
 function parseAndShow(text) {
+    // 1. Global Cleaning
     let cleanText = text.replace(/,/g, '').replace(/\s+\./g, '.').toUpperCase();
-    const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    // 2. Extract every decimal number found in the text
+    const allNumbers = cleanText.match(/\d+\.\d{2}/g);
+    
     let results = { total: 0, digital: {} };
 
-    for (let i = lines.length - 1; i >= 0; i--) {
-        if (lines[i].includes("TOTAL") && lines[i].includes("COUNT")) {
-            let combined = lines.slice(i, i + 3).join(" ");
-            let matches = combined.match(/\d+\.\d{2}/g);
-            if (matches) { results.total = parseFloat(matches[0]); break; }
-        }
-    }
-
-    let inZone = false;
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes("BANK TRANSFER")) inZone = true;
-        if (inZone) {
-            for (let [key, id] of Object.entries(digitalKeysMap)) {
-                if (lines[i].includes(key)) {
-                    let matches = lines[i].match(/\d+\.\d{2}/g);
-                    if (matches) { results.digital[id] = parseFloat(matches[matches.length - 1]); }
-                }
+    // APPROACH: Find Total Count
+    if (allNumbers && allNumbers.length > 0) {
+        // Find the index of "TOTAL COUNT"
+        const tcLabelIndex = cleanText.indexOf("TOTAL COUNT");
+        
+        if (tcLabelIndex !== -1) {
+            // Look at text immediately after the label "TOTAL COUNT"
+            const snippet = cleanText.substring(tcLabelIndex, tcLabelIndex + 50);
+            const nearMatch = snippet.match(/\d+\.\d{2}/);
+            if (nearMatch) {
+                results.total = parseFloat(nearMatch[0]);
+            } else {
+                // If not immediately after, the total is usually the very last decimal in the receipt
+                results.total = parseFloat(allNumbers[allNumbers.length - 1]);
             }
+        } else {
+            // If label isn't found, pick the last number in the receipt
+            results.total = parseFloat(allNumbers[allNumbers.length - 1]);
         }
-        if (lines[i].includes("TOTAL COUNT")) inZone = false;
     }
 
+    // APPROACH: Digital Payments
+    for (let [key, id] of Object.entries(digitalKeysMap)) {
+        const keyIndex = cleanText.indexOf(key);
+        if (keyIndex !== -1) {
+            // Look for the first number appearing after the keyword
+            const snippet = cleanText.substring(keyIndex, keyIndex + 40);
+            const m = snippet.match(/\d+\.\d{2}/);
+            if (m) results.digital[id] = parseFloat(m[0]);
+        }
+    }
+
+    // Populate Modal
     document.getElementById('tempTotal').value = results.total.toFixed(2);
     for (let id of Object.values(digitalKeysMap)) {
         document.getElementById('temp_' + id).value = (results.digital[id] || 0).toFixed(2);
