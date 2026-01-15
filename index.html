@@ -20,7 +20,7 @@
 
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            padding: 15px; margin: 0; 
+            padding: 10px; margin: 0; 
             background: var(--bg); 
             display: flex; justify-content: center; align-items: flex-start; min-height: 100vh;
             touch-action: manipulation;
@@ -33,16 +33,25 @@
             box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); 
             width: 100%; max-width: 440px;
             margin-top: 10px;
+            box-sizing: border-box;
         }
 
-        header { text-align: center; margin-bottom: 20px; }
-        h2 { color: var(--primary); margin: 0; font-weight: 800; font-size: 28px; }
+        header { text-align: center; margin-bottom: 25px; }
+        h2 { color: var(--primary); margin: 0; font-weight: 800; font-size: 32px; }
         
         .counter-badge {
             display: inline-block;
             background: #e2e8f0; color: #475569; padding: 6px 16px; 
             border-radius: 20px; font-size: 13px; font-weight: 700;
-            margin-top: 8px;
+            margin-top: 10px;
+        }
+
+        /* Centering the snap button container */
+        .snap-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin: 0 auto;
         }
 
         .btn-snap { 
@@ -51,7 +60,6 @@
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             transition: transform 0.1s;
             box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
-            margin: 0 auto;
         }
 
         .btn-snap:active { transform: scale(0.96); }
@@ -107,10 +115,12 @@
         <span id="receiptCount" class="counter-badge">0 SCANNED</span>
     </header>
     
-    <label class="btn-snap">
-        📷 &nbsp; SNAP OR CHOOSE RECEIPT
-        <input type="file" id="imageInput" accept="image/*" onchange="runOCR()">
-    </label>
+    <div class="snap-container">
+        <label class="btn-snap">
+            📷 &nbsp; SNAP RECEIPT
+            <input type="file" id="imageInput" accept="image/*" capture="environment" onchange="runOCR()">
+        </label>
+    </div>
     
     <div id="status" class="status">Ready</div>
 
@@ -197,7 +207,6 @@ async function runOCR() {
     } catch (e) {
         status.innerText = "❌ Scan failed. Try again.";
     }
-    // Clear input so same file can be selected again if needed
     document.getElementById('imageInput').value = "";
 }
 
