@@ -15,11 +15,15 @@
         h2 { color: var(--primary); margin: 0; font-weight: 800; font-size: 32px; }
         .counter-badge { display: inline-block; background: #e2e8f0; color: #475569; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; }
         
+        /* Progress Bar Styles */
+        .progress-container { width: 100%; height: 8px; background: #e2e8f0; border-radius: 10px; margin: 10px 0; display: none; overflow: hidden; }
+        #progressBar { width: 0%; height: 100%; background: var(--primary); transition: width 0.3s ease; }
+        
         .action-area { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; align-items: center; }
         .btn-snap { background: var(--primary); color: white; border: none; padding: 18px; width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); }
         .btn-gallery { background: #f1f5f9; color: #475569; border: none; padding: 10px; width: 80%; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; }
         
-        .status { text-align: center; margin: 10px 0; font-size: 14px; color: #64748b; font-weight: 600; min-height: 20px; }
+        .status { text-align: center; margin: 5px 0; font-size: 14px; color: #64748b; font-weight: 600; min-height: 20px; }
         .digital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f1f5f9; padding: 15px; border-radius: 20px; margin-bottom: 15px; }
         input[type="number"] { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 18px; font-weight: 700; box-sizing: border-box; outline: none; background: #fff; }
         .total-card { background: #ecfdf5; padding: 20px; border-radius: 24px; border: 2px solid var(--success); text-align: center; }
@@ -27,8 +31,7 @@
         .btn-group { display: flex; gap: 10px; margin-top: 15px; }
         .btn-undo { flex: 1; background: #fff; color: var(--danger); border: 2px solid var(--danger); padding: 12px; border-radius: 12px; font-weight: 700; }
         .btn-clear { flex: 2; background: #f1f5f9; color: #64748b; border: none; padding: 12px; border-radius: 12px; font-weight: 700; }
-        input[type="file"] { display: none; }
-        #processCanvas { display: none; }
+        input[type="file"], canvas { display: none; }
     </style>
 </head>
 <body>
@@ -50,8 +53,11 @@
         </label>
     </div>
     
+    <div class="progress-container" id="progressWrapper">
+        <div id="progressBar"></div>
+    </div>
     <div id="status" class="status">Ready</div>
-    <canvas id="processCanvas"></canvas>
+    <canvas id="pCanvas"></canvas>
 
     <div id="results">
         <div style="margin-bottom:10px;">
@@ -92,56 +98,70 @@ const digitalKeysMap = {
     'TRANSFER': 'val_TRANSFER', 'GRAB': 'val_EWALLET', 'IPAY': 'val_EWALLET', 'VOUCHER': 'val_VOUCHER' 
 };
 
+let worker = null;
+
 async function processImage(input) {
     const file = input.files[0];
     if (!file) return;
+
     const status = document.getElementById('status');
-    status.innerText = "Processing... 🪄";
+    const progressWrapper = document.getElementById('progressWrapper');
+    const progressBar = document.getElementById('progressBar');
+
+    status.innerText = "Analyzing Receipt...";
+    progressWrapper.style.display = "block";
+    progressBar.style.width = "10%";
 
     const img = new Image();
     img.src = URL.createObjectURL(file);
     img.onload = async () => {
-        const canvas = document.getElementById('processCanvas');
+        const canvas = document.getElementById('pCanvas');
         const ctx = canvas.getContext('2d');
-        const scale = 1.5; 
-        canvas.width = img.width * scale;
+        
+        // Resize for speed (800px width)
+        const scale = 800 / img.width;
+        canvas.width = 800;
         canvas.height = img.height * scale;
-        ctx.filter = 'contrast(1.4) grayscale(1)';
+        
+        ctx.filter = 'grayscale(1) contrast(1.2)';
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        runOCR(dataUrl);
-    };
-}
-
-async function runOCR(dataUrl) {
-    const status = document.getElementById('status');
-    try {
-        const worker = await Tesseract.createWorker('eng');
-        const { data: { text } } = await worker.recognize(dataUrl);
-        await worker.terminate();
-
-        const data = parseReceipt(text);
-        scanHistory.push(data);
-        updateFields();
+        if (!worker) {
+            worker = await Tesseract.createWorker('eng', 1, {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        progressBar.style.width = (m.progress * 100) + "%";
+                    }
+                }
+            });
+            await worker.setParameters({
+                tessedit_char_whitelist: '0123456789.ABCDEFGHIJKLMNOPQRSTUVWXYZ ',
+            });
+        }
+        
+        const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.6));
+        
+        parseReceipt(text);
+        
         status.innerText = "Scan Added ✅";
-    } catch (e) {
-        status.innerText = "❌ Scan Error";
-    }
+        setTimeout(() => {
+            progressWrapper.style.display = "none";
+            progressBar.style.width = "0%";
+        }, 1000);
+        
+        input.value = ""; 
+    };
 }
 
 function parseReceipt(text) {
     const cleanText = text.toUpperCase().replace(/,/g, '');
     const lines = cleanText.split('\n');
     
-    // Function to find the LAST decimal number on a line containing a keyword
     const findAmountOnLine = (keyword) => {
         for (let line of lines) {
             if (line.includes(keyword)) {
-                // Regex looks for decimal numbers (e.g., 125.00)
                 const matches = line.match(/\d+\.\d{2}/g); 
                 if (matches && matches.length > 0) {
-                    // Returns the last match on the line, skipping the QTY column
                     return parseFloat(matches[matches.length - 1]);
                 }
             }
@@ -149,32 +169,27 @@ function parseReceipt(text) {
         return 0;
     };
 
-    // Fuzzy matching for Total Sales
-    let totalCount = findAmountOnLine("TOTAL COUNT") || findAmountOnLine("TOTAL") || findAmountOnLine("NET") || findAmountOnLine("AMT");
-
+    let totalCount = findAmountOnLine("TOTAL") || findAmountOnLine("COUNT") || findAmountOnLine("NET");
     let digital = {};
     for (let key in digitalKeysMap) {
-        // Accumulate values if multiple keywords point to same input (like GRAB/IPAY)
         const val = findAmountOnLine(key);
         const inputId = digitalKeysMap[key];
         digital[inputId] = (digital[inputId] || 0) + val;
     }
     
-    return { totalCount, digital };
+    scanHistory.push({ totalCount, digital });
+    updateFields();
 }
 
 function updateFields() {
     let tCount = 0;
     let dTotals = { val_QRPAY:0, val_VISA:0, val_MASTER:0, val_TRANSFER:0, val_EWALLET:0, val_VOUCHER:0 };
-    
     scanHistory.forEach(s => {
         tCount += s.totalCount;
         for (let k in s.digital) { dTotals[k] += s.digital[k]; }
     });
-
     document.getElementById('editTotalCount').value = tCount.toFixed(2);
     for (let id in dTotals) document.getElementById(id).value = dTotals[id].toFixed(2);
-    
     document.getElementById('receiptCount').innerText = scanHistory.length + " SCANNED";
     document.getElementById('editFloat').value = (scanHistory.length * 300).toFixed(2);
     calculateFinal();
