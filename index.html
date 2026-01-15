@@ -159,9 +159,11 @@ function parseReceipt(text) {
     
     const findAmountOnLine = (keyword) => {
         for (let line of lines) {
+            // Check if the line contains the specific keyword
             if (line.includes(keyword)) {
                 const matches = line.match(/\d+\.\d{2}/g); 
                 if (matches && matches.length > 0) {
+                    // Returns the last decimal on the line
                     return parseFloat(matches[matches.length - 1]);
                 }
             }
@@ -169,7 +171,15 @@ function parseReceipt(text) {
         return 0;
     };
 
-    let totalCount = findAmountOnLine("TOTAL") || findAmountOnLine("COUNT") || findAmountOnLine("NET");
+    // 1. IMPROVED TOTAL COUNT DETECTION
+    // We search for multiple possible labels found on POS receipts
+    let totalCount = findAmountOnLine("TOTAL COUNT") || 
+                     findAmountOnLine("GRAND TOTAL") || 
+                     findAmountOnLine("NET AMT") || 
+                     findAmountOnLine("TOTAL SALES") ||
+                     findAmountOnLine("TOTAL");
+
+    // 2. DIGITAL PAYMENTS DETECTION
     let digital = {};
     for (let key in digitalKeysMap) {
         const val = findAmountOnLine(key);
@@ -177,6 +187,24 @@ function parseReceipt(text) {
         digital[inputId] = (digital[inputId] || 0) + val;
     }
     
+    // 3. ERROR HANDLING: If total is still 0, look for the largest decimal in the whole text
+    if (totalCount === 0) {
+        const allDecimals = cleanText.match(/\d+\.\d{2}/g);
+        if (allDecimals) {
+            // Pick the largest number found - usually the Grand Total
+            const numbers = allDecimals.map(n => parseFloat(n));
+            totalCount = Math.max(...numbers);
+        }
+    }
+
+    const status = document.getElementById('status');
+    if (totalCount === 0) {
+        status.innerHTML = "⚠️ Total Not Found - Please Check";
+        status.style.color = "var(--danger)";
+    } else {
+        status.style.color = "var(--success)";
+    }
+
     scanHistory.push({ totalCount, digital });
     updateFields();
 }
@@ -211,3 +239,4 @@ function confirmClear() { if(confirm("Reset data?")) location.reload(); }
 
 </body>
 </html>
+
