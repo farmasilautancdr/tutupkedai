@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tutupkedai-v15';
+const CACHE_NAME = 'tutupkedai-v16';
 const ASSETS = [
   './',
   './index.html',
@@ -43,5 +43,6 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
 
 
