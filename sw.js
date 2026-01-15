@@ -1,20 +1,21 @@
-const CACHE_NAME = 'tutupkedai-v2';
+const CACHE_NAME = 'tutupkedai-v4';
 const ASSETS = [
   'index.html',
   'manifest.json',
   'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'
 ];
 
-// Install Service Worker
+// Install Service Worker and cache core assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS);
     })
   );
+  self.skipWaiting();
 });
 
-// Activate and Clear Old Caches
+// Activate and clear old caches from previous versions
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -23,13 +24,14 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  self.clients.claim();
 });
 
-// Fetch Assets
+// Fetching strategy: Network first, fallback to cache
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
     })
   );
 });
