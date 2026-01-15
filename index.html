@@ -15,7 +15,6 @@
         h2 { color: var(--primary); margin: 0; font-weight: 800; font-size: 32px; }
         .counter-badge { display: inline-block; background: #e2e8f0; color: #475569; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; }
         
-        /* Modal Styles */
         #reviewModal { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 15px; box-sizing: border-box;
@@ -31,7 +30,6 @@
         
         .action-area { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; align-items: center; }
         .btn-snap { background: var(--primary); color: white; border: none; padding: 18px; width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .btn-gallery { background: #f1f5f9; color: #475569; border: none; padding: 10px; width: 80%; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; }
         
         .status { text-align: center; margin: 5px 0; font-size: 14px; color: #64748b; font-weight: 600; min-height: 20px; }
         .digital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f1f5f9; padding: 15px; border-radius: 20px; margin-bottom: 15px; }
@@ -54,22 +52,19 @@
 <div id="reviewModal">
     <div class="modal-content">
         <div class="modal-header">🔍 Review & Edit Scan</div>
-        
         <div style="margin-bottom:15px;">
             <label style="font-size:11px; font-weight:800; color: #475569;">TOTAL SALES (BILL AMOUNT)</label>
             <input type="number" id="tempTotal" step="0.01" style="border-color: var(--primary); background: #eff6ff;">
         </div>
-
-        <div style="font-size:11px; font-weight:800; color: #475569; margin-bottom: 5px;">DIGITAL PAYMENTS</div>
         <div class="digital-grid">
             <div><span style="font-size:9px; font-weight:700;">QR PAY</span><input type="number" id="temp_val_QRPAY" step="0.01"></div>
             <div><span style="font-size:9px; font-weight:700;">VISA</span><input type="number" id="temp_val_VISA" step="0.01"></div>
             <div><span style="font-size:9px; font-weight:700;">MASTER</span><input type="number" id="temp_val_MASTER" step="0.01"></div>
             <div><span style="font-size:9px; font-weight:700;">TRANSFER</span><input type="number" id="temp_val_TRANSFER" step="0.01"></div>
-            <div><span style="font-size:9px; font-weight:700;">GRAB/IPAY</span><input type="number" id="temp_val_EWALLET" step="0.01"></div>
+            <div><span style="font-size:9px; font-weight:700;">GRAB</span><input type="number" id="temp_val_GRAB" step="0.01"></div>
+            <div><span style="font-size:9px; font-weight:700;">IPAY88</span><input type="number" id="temp_val_IPAY" step="0.01"></div>
             <div><span style="font-size:9px; font-weight:700;">VOUCHER</span><input type="number" id="temp_val_VOUCHER" step="0.01"></div>
         </div>
-
         <button class="btn-confirm" onclick="confirmScan()">✅ Add to Daily Total</button>
         <button class="btn-cancel" onclick="closeModal()">❌ Discard Scan</button>
     </div>
@@ -82,47 +77,35 @@
     </header>
     
     <div class="action-area">
-        <label class="btn-snap">
-            📷 &nbsp; SNAP RECEIPT
-            <input type="file" accept="image/*" capture="environment" onchange="processImage(this)">
-        </label>
-        <label class="btn-gallery">
-            📁 Choose from Gallery
-            <input type="file" accept="image/*" onchange="processImage(this)">
-        </label>
+        <label class="btn-snap">📷 &nbsp; SNAP RECEIPT<input type="file" accept="image/*" capture="environment" onchange="processImage(this)"></label>
     </div>
     
-    <div class="progress-container" id="progressWrapper">
-        <div id="progressBar"></div>
-    </div>
+    <div class="progress-container" id="progressWrapper"><div id="progressBar"></div></div>
     <div id="status" class="status">Ready</div>
     <canvas id="pCanvas"></canvas>
 
     <div id="results">
         <div style="margin-bottom:10px;">
             <span style="font-size:11px; font-weight:700; color:#64748b;">ACCUMULATED SALES</span>
-            <input type="number" id="editTotalCount" step="0.01" value="0.00" readonly>
+            <input type="number" id="editTotalCount" value="0.00" readonly>
         </div>
-
         <div class="digital-grid" style="opacity: 0.8;">
             <div><span style="font-size:9px; font-weight:700;">QR PAY</span><input type="number" id="val_QRPAY" value="0.00" readonly></div>
             <div><span style="font-size:9px; font-weight:700;">VISA</span><input type="number" id="val_VISA" value="0.00" readonly></div>
             <div><span style="font-size:9px; font-weight:700;">MASTER</span><input type="number" id="val_MASTER" value="0.00" readonly></div>
             <div><span style="font-size:9px; font-weight:700;">TRANSFER</span><input type="number" id="val_TRANSFER" value="0.00" readonly></div>
-            <div><span style="font-size:9px; font-weight:700;">GRAB/IPAY</span><input type="number" id="val_EWALLET" value="0.00" readonly></div>
+            <div><span style="font-size:9px; font-weight:700;">GRAB</span><input type="number" id="val_GRAB" value="0.00" readonly></div>
+            <div><span style="font-size:9px; font-weight:700;">IPAY88</span><input type="number" id="val_IPAY" value="0.00" readonly></div>
             <div><span style="font-size:9px; font-weight:700;">VOUCHER</span><input type="number" id="val_VOUCHER" value="0.00" readonly></div>
         </div>
-
         <div style="margin-bottom:10px;">
             <span style="font-size:11px; font-weight:700; color:#64748b;">TOTAL FLOAT (RM300 x Count)</span>
-            <input type="number" id="editFloat" value="0.00" oninput="calculateFinal()">
+            <input type="number" id="editFloat" value="0.00" readonly>
         </div>
-
         <div class="total-card">
             <span style="font-size:14px; font-weight:800; color:var(--success);">FINAL BANK DEPOSIT</span>
             <span id="resBank">RM 0.00</span>
         </div>
-        
         <div class="btn-group">
             <button class="btn-undo" onclick="undoLastScan()">UNDO</button>
             <button class="btn-clear" onclick="confirmClear()">RESET</button>
@@ -131,81 +114,69 @@
 </div>
 
 <script>
-let scanHistory = [];
+let scanHistory = JSON.parse(localStorage.getItem('tutupKedaiData')) || [];
 const digitalKeysMap = { 
-    'QR PAY': 'val_QRPAY', 'VISA': 'val_VISA', 'MASTER': 'val_MASTER', 
-    'TRANSFER': 'val_TRANSFER', 'GRAB': 'val_EWALLET', 'IPAY': 'val_EWALLET', 'VOUCHER': 'val_VOUCHER' 
+    'BANK TRANSFER': 'val_TRANSFER', 'GRAB MERCHANT': 'val_GRAB', 
+    'IPAY88': 'val_IPAY', 'MASTER': 'val_MASTER', 'QR PAY': 'val_QRPAY', 
+    'VISA': 'val_VISA', 'VOUCHER': 'val_VOUCHER' 
 };
-
 let worker = null;
+
+window.onload = updateFields;
 
 async function processImage(input) {
     const file = input.files[0];
     if (!file) return;
-
-    const status = document.getElementById('status');
-    const progressWrapper = document.getElementById('progressWrapper');
-    const progressBar = document.getElementById('progressBar');
-
-    status.innerText = "Processing... 🪄";
-    progressWrapper.style.display = "block";
-    progressBar.style.width = "10%";
-
+    const status = document.getElementById('status'), pWrapper = document.getElementById('progressWrapper'), pBar = document.getElementById('progressBar');
+    status.innerText = "Analyzing Receipt..."; pWrapper.style.display = "block"; pBar.style.width = "10%";
     const img = new Image();
     img.src = URL.createObjectURL(file);
     img.onload = async () => {
-        const canvas = document.getElementById('pCanvas');
-        const ctx = canvas.getContext('2d');
-        const scale = 800 / img.width;
-        canvas.width = 800;
-        canvas.height = img.height * scale;
-        ctx.filter = 'grayscale(1) contrast(1.2)';
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
+        const canvas = document.getElementById('pCanvas'), ctx = canvas.getContext('2d'), scale = 1000 / img.width;
+        canvas.width = 1000; canvas.height = img.height * scale;
+        ctx.filter = 'grayscale(1) contrast(1.4)'; ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         if (!worker) {
-            worker = await Tesseract.createWorker('eng', 1, {
-                logger: m => { if (m.status === 'recognizing text') progressBar.style.width = (m.progress * 100) + "%"; }
-            });
-            await worker.setParameters({ tessedit_char_whitelist: '0123456789.ABCDEFGHIJKLMNOPQRSTUVWXYZ ' });
+            worker = await Tesseract.createWorker('eng', 1, { logger: m => { if (m.status === 'recognizing text') pBar.style.width = (m.progress * 100) + "%"; } });
+            await worker.setParameters({ tessedit_char_whitelist: '0123456789.ABCDEFGHIJKLMNOPQRSTUVWXYZ: ' });
         }
-        
-        const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.6));
-        showReviewModal(text);
-        
-        status.innerText = "Analysis Complete";
-        progressWrapper.style.display = "none";
-        input.value = ""; 
+        const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.8));
+        parseAndShow(text);
+        status.innerText = "Ready"; pWrapper.style.display = "none"; input.value = ""; 
     };
 }
 
-function showReviewModal(text) {
-    const cleanText = text.toUpperCase().replace(/,/g, '');
-    const lines = cleanText.split('\n');
-    
-    const findAmount = (keyword) => {
-        for (let line of lines) {
-            if (line.includes(keyword)) {
-                const matches = line.match(/\d+\.\d{2}/g); 
-                if (matches && matches.length > 0) return parseFloat(matches[matches.length - 1]);
+function parseAndShow(text) {
+    const lines = text.toUpperCase().replace(/,/g, '').split('\n');
+    let capture = false;
+    let results = { total: 0, digital: {} };
+
+    for (let line of lines) {
+        // Start looking after Bank Transfer line
+        if (line.includes("BANK TRANSFER")) capture = true;
+
+        // Extract amount if we are in the capture zone
+        if (capture) {
+            for (let [key, id] of Object.entries(digitalKeysMap)) {
+                if (line.includes(key)) {
+                    const m = line.match(/\d+\.\d{2}/g);
+                    if (m) results.digital[id] = parseFloat(m[m.length - 1]);
+                }
             }
         }
-        return 0;
-    };
 
-    // Find Total Sales
-    let total = findAmount("TOTAL") || findAmount("COUNT") || findAmount("NET");
-    if (total === 0) {
-        const allDec = cleanText.match(/\d+\.\d{2}/g);
-        if (allDec) total = Math.max(...allDec.map(n => parseFloat(n)));
+        // Stop at Total Count and get value
+        if (line.includes("TOTAL COUNT")) {
+            const m = line.match(/\d+\.\d{2}/g);
+            if (m) results.total = parseFloat(m[m.length - 1]);
+            capture = false;
+        }
     }
 
-    // Fill Modal Inputs
-    document.getElementById('tempTotal').value = total.toFixed(2);
-    for (let key in digitalKeysMap) {
-        const val = findAmount(key);
-        document.getElementById('temp_' + digitalKeysMap[key]).value = val.toFixed(2);
+    // Modal fill
+    document.getElementById('tempTotal').value = results.total.toFixed(2);
+    for (let id of Object.values(digitalKeysMap)) {
+        document.getElementById('temp_' + id).value = (results.digital[id] || 0).toFixed(2);
     }
-
     document.getElementById('reviewModal').style.display = "flex";
 }
 
@@ -213,27 +184,32 @@ function confirmScan() {
     const data = {
         totalCount: parseFloat(document.getElementById('tempTotal').value) || 0,
         digital: {
+            val_TRANSFER: parseFloat(document.getElementById('temp_val_TRANSFER').value) || 0,
+            val_GRAB: parseFloat(document.getElementById('temp_val_GRAB').value) || 0,
+            val_IPAY: parseFloat(document.getElementById('temp_val_IPAY').value) || 0,
+            val_MASTER: parseFloat(document.getElementById('temp_val_MASTER').value) || 0,
             val_QRPAY: parseFloat(document.getElementById('temp_val_QRPAY').value) || 0,
             val_VISA: parseFloat(document.getElementById('temp_val_VISA').value) || 0,
-            val_MASTER: parseFloat(document.getElementById('temp_val_MASTER').value) || 0,
-            val_TRANSFER: parseFloat(document.getElementById('temp_val_TRANSFER').value) || 0,
-            val_EWALLET: parseFloat(document.getElementById('temp_val_EWALLET').value) || 0,
             val_VOUCHER: parseFloat(document.getElementById('temp_val_VOUCHER').value) || 0,
         }
     };
     scanHistory.push(data);
-    updateFields();
+    saveAndRefresh();
     closeModal();
 }
 
 function closeModal() { document.getElementById('reviewModal').style.display = "none"; }
 
+function saveAndRefresh() {
+    localStorage.setItem('tutupKedaiData', JSON.stringify(scanHistory));
+    updateFields();
+}
+
 function updateFields() {
-    let tCount = 0;
-    let dTotals = { val_QRPAY:0, val_VISA:0, val_MASTER:0, val_TRANSFER:0, val_EWALLET:0, val_VOUCHER:0 };
+    let tCount = 0, dTotals = { val_TRANSFER:0, val_GRAB:0, val_IPAY:0, val_MASTER:0, val_QRPAY:0, val_VISA:0, val_VOUCHER:0 };
     scanHistory.forEach(s => {
         tCount += s.totalCount;
-        for (let k in s.digital) { dTotals[k] += s.digital[k]; }
+        for (let k in s.digital) dTotals[k] += (s.digital[k] || 0);
     });
     document.getElementById('editTotalCount').value = tCount.toFixed(2);
     for (let id in dTotals) document.getElementById(id).value = dTotals[id].toFixed(2);
@@ -246,15 +222,14 @@ function calculateFinal() {
     const total = parseFloat(document.getElementById('editTotalCount').value) || 0;
     const float = parseFloat(document.getElementById('editFloat').value) || 0;
     let digi = 0;
-    ['val_QRPAY','val_VISA','val_MASTER','val_TRANSFER','val_EWALLET','val_VOUCHER'].forEach(id => {
-        digi += parseFloat(document.getElementById(id).value) || 0;
+    Object.keys(digitalKeysMap).forEach(key => {
+        digi += parseFloat(document.getElementById(digitalKeysMap[key]).value) || 0;
     });
     document.getElementById('resBank').innerText = "RM " + (total - digi - float).toFixed(2);
 }
 
-function undoLastScan() { if (scanHistory.length > 0) { scanHistory.pop(); updateFields(); } }
-function confirmClear() { if(confirm("Reset data?")) location.reload(); }
+function undoLastScan() { if (scanHistory.length > 0) { scanHistory.pop(); saveAndRefresh(); } }
+function confirmClear() { if(confirm("Clear today's data?")) { scanHistory = []; localStorage.removeItem('tutupKedaiData'); location.reload(); } }
 </script>
-
 </body>
 </html>
