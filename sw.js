@@ -1,43 +1,45 @@
-const CACHE_NAME = 'tutupkedai-v10';
+const CACHE_NAME = 'tutupkedai-v13';
 const ASSETS = [
-  'index.html',
-  'manifest.json',
+  './',
+  './index.html',
+  './manifest.json',
   'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'
 ];
 
-// Install Service Worker and cache core assets
+// Install Event - Pre-cache the app
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS);
     })
   );
+  // Force the waiting service worker to become the active service worker
   self.skipWaiting();
 });
 
-// Activate and clear old caches from previous versions
+// Activate Event - Clean up OLD caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            console.log('Service Worker: Clearing Old Cache');
+            return caches.delete(cache);
+          }
+        })
       );
     })
   );
-  self.clients.claim();
+  // Ensure the new service worker takes control of the page immediately
+  return self.clients.claim();
 });
 
-// Fetching strategy: Network first, fallback to cache
+// Fetch Event - Serve from cache, then network
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
     })
   );
 });
-
-
-
-
-
-
