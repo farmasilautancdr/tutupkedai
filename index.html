@@ -146,15 +146,17 @@ async function processImage(input) {
 }
 
 function parseAndShow(text) {
-    const lines = text.toUpperCase().replace(/,/g, '').split('\n');
+    const lines = text.toUpperCase().replace(/,/g, '').split('\n').map(l => l.trim());
     let capture = false;
     let results = { total: 0, digital: {} };
 
-    for (let line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+
         // Start looking after Bank Transfer line
         if (line.includes("BANK TRANSFER")) capture = true;
 
-        // Extract amount if we are in the capture zone
+        // Extract digital amounts if we are in the capture zone
         if (capture) {
             for (let [key, id] of Object.entries(digitalKeysMap)) {
                 if (line.includes(key)) {
@@ -164,11 +166,20 @@ function parseAndShow(text) {
             }
         }
 
-        // Stop at Total Count and get value
+        // STOP & CAPTURE TOTAL COUNT
         if (line.includes("TOTAL COUNT")) {
-            const m = line.match(/\d+\.\d{2}/g);
-            if (m) results.total = parseFloat(m[m.length - 1]);
-            capture = false;
+            // Check current line first
+            let m = line.match(/\d+\.\d{2}/g);
+            
+            // If not found on current line, check the next line (common in OCR)
+            if (!m && i + 1 < lines.length) {
+                m = lines[i+1].match(/\d+\.\d{2}/g);
+            }
+
+            if (m) {
+                results.total = parseFloat(m[m.length - 1]);
+            }
+            capture = false; // Stop scanning digital keys once total is found
         }
     }
 
@@ -233,3 +244,4 @@ function confirmClear() { if(confirm("Clear today's data?")) { scanHistory = [];
 </script>
 </body>
 </html>
+
