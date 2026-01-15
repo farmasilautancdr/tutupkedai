@@ -6,105 +6,27 @@
     <title>TutupKedai</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
-        :root {
-            --primary: #2563eb;
-            --success: #059669;
-            --danger: #dc2626;
-            --bg: #f8fafc;
-            --card-bg: #ffffff;
-        }
-
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            padding: 10px; margin: 0; 
-            background: var(--bg); 
-            display: flex; justify-content: center; align-items: flex-start; min-height: 100vh;
-            touch-action: manipulation;
-        }
-
-        .card { 
-            background: var(--card-bg); 
-            padding: 24px; 
-            border-radius: 32px; 
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); 
-            width: 100%; max-width: 440px;
-            margin-top: 10px;
-            box-sizing: border-box;
-        }
-
+        :root { --primary: #2563eb; --success: #059669; --danger: #dc2626; --bg: #f8fafc; --card-bg: #ffffff; }
+        body { font-family: -apple-system, sans-serif; padding: 10px; margin: 0; background: var(--bg); display: flex; justify-content: center; min-height: 100vh; touch-action: manipulation; }
+        .card { background: var(--card-bg); padding: 24px; border-radius: 32px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); width: 100%; max-width: 440px; margin-top: 10px; box-sizing: border-box; }
         header { text-align: center; margin-bottom: 25px; }
         h2 { color: var(--primary); margin: 0; font-weight: 800; font-size: 32px; }
-        
-        .counter-badge {
-            display: inline-block;
-            background: #e2e8f0; color: #475569; padding: 6px 16px; 
-            border-radius: 20px; font-size: 13px; font-weight: 700;
-            margin-top: 10px;
-        }
-
-        /* Centering the snap button container */
-        .snap-container {
-            display: flex;
-            justify-content: center;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        .btn-snap { 
-            background: var(--primary); color: white; border: none; padding: 20px; 
-            width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; 
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: transform 0.1s;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
-        }
-
-        .btn-snap:active { transform: scale(0.96); }
-
+        .counter-badge { display: inline-block; background: #e2e8f0; color: #475569; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; margin-top: 10px; }
+        .snap-container { display: flex; justify-content: center; width: 100%; }
+        .btn-snap { background: var(--primary); color: white; border: none; padding: 20px; width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); }
         .status { text-align: center; margin: 15px 0; font-size: 14px; color: #64748b; font-weight: 600; min-height: 20px; }
-        
-        .result-box { margin-top: 10px; animation: fadeIn 0.4s ease-out; }
-        .verify-label { font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
-        .input-row { position: relative; margin-bottom: 15px; }
-        
-        .digital-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            background: #f1f5f9;
-            padding: 15px;
-            border-radius: 20px;
-            margin-bottom: 15px;
-        }
-
-        input[type="number"] {
-            width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0;
-            font-size: 18px; font-weight: 700; box-sizing: border-box; outline: none; transition: 0.2s;
-            background: #fff; appearance: none;
-            -webkit-appearance: none;
-        }
-
-        input[type="number"]:focus { border-color: var(--primary); background: #f0f7ff; }
-
-        .total-card {
-            background: #ecfdf5; padding: 24px; border-radius: 24px; 
-            border: 2px solid var(--success); margin-top: 10px; text-align: center;
-        }
-
-        .total-label { color: var(--success); font-weight: 800; font-size: 15px; text-transform: uppercase; }
-        #resBank { color: var(--success); font-size: 36px; font-weight: 900; display: block; margin-top: 4px; }
-
-        .btn-group { display: flex; gap: 12px; margin-top: 20px; justify-content: center; }
-        .btn-undo { flex: 1; background: #fff; color: var(--danger); border: 2px solid var(--danger); padding: 14px; border-radius: 14px; cursor: pointer; font-weight: 700; font-size: 14px; }
-        .btn-clear { flex: 2; background: #f1f5f9; color: #64748b; border: none; padding: 14px; border-radius: 14px; cursor: pointer; font-weight: 700; font-size: 14px; }
-
-        .float-hint { font-size: 11px; color: #94a3b8; font-weight: 600; margin-left: 4px; }
-
+        .digital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f1f5f9; padding: 15px; border-radius: 20px; margin-bottom: 15px; }
+        input[type="number"] { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 18px; font-weight: 700; box-sizing: border-box; outline: none; background: #fff; }
+        .total-card { background: #ecfdf5; padding: 24px; border-radius: 24px; border: 2px solid var(--success); text-align: center; }
+        #resBank { color: var(--success); font-size: 36px; font-weight: 900; display: block; }
+        .btn-group { display: flex; gap: 12px; margin-top: 20px; }
+        .btn-undo { flex: 1; background: #fff; color: var(--danger); border: 2px solid var(--danger); padding: 14px; border-radius: 14px; font-weight: 700; }
+        .btn-clear { flex: 2; background: #f1f5f9; color: #64748b; border: none; padding: 14px; border-radius: 14px; font-weight: 700; }
         input[type="file"] { display: none; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Canvas is hidden, used for image processing */
+        #processCanvas { display: none; }
     </style>
 </head>
 <body>
@@ -118,53 +40,35 @@
     <div class="snap-container">
         <label class="btn-snap">
             📷 &nbsp; SNAP RECEIPT
-            <input type="file" id="imageInput" accept="image/*" capture="environment" onchange="runOCR()">
+            <input type="file" id="imageInput" accept="image/*" capture="environment" onchange="processAndRunOCR()">
         </label>
     </div>
     
     <div id="status" class="status">Ready</div>
+    <canvas id="processCanvas"></canvas>
 
-    <div id="results" class="result-box">
-        <div class="input-row">
-            <span class="verify-label">Total Count (Sales + Float)</span>
+    <div id="results">
+        <div style="margin-bottom:15px;">
+            <span style="font-size:11px; font-weight:700; color:#64748b;">TOTAL COUNT (SALES + FLOAT)</span>
             <input type="number" id="editTotalCount" step="0.01" value="0.00" oninput="calculateFinal()">
         </div>
 
-        <span class="verify-label">Digital Breakdown</span>
         <div class="digital-grid">
-            <div class="input-col">
-                <span class="verify-label" style="font-size: 9px;">QR Pay</span>
-                <input type="number" id="val_QRPAY" step="0.01" value="0.00" oninput="calculateFinal()">
-            </div>
-            <div class="input-col">
-                <span class="verify-label" style="font-size: 9px;">Visa</span>
-                <input type="number" id="val_VISA" step="0.01" value="0.00" oninput="calculateFinal()">
-            </div>
-            <div class="input-col">
-                <span class="verify-label" style="font-size: 9px;">Master</span>
-                <input type="number" id="val_MASTER" step="0.01" value="0.00" oninput="calculateFinal()">
-            </div>
-            <div class="input-col">
-                <span class="verify-label" style="font-size: 9px;">Bank Transfer</span>
-                <input type="number" id="val_TRANSFER" step="0.01" value="0.00" oninput="calculateFinal()">
-            </div>
-            <div class="input-col">
-                <span class="verify-label" style="font-size: 9px;">Grab/IPay88</span>
-                <input type="number" id="val_EWALLET" step="0.01" value="0.00" oninput="calculateFinal()">
-            </div>
-            <div class="input-col">
-                <span class="verify-label" style="font-size: 9px;">Voucher</span>
-                <input type="number" id="val_VOUCHER" step="0.01" value="0.00" oninput="calculateFinal()">
-            </div>
+            <div><span style="font-size:9px; font-weight:700;">QR PAY</span><input type="number" id="val_QRPAY" step="0.01" value="0.00" oninput="calculateFinal()"></div>
+            <div><span style="font-size:9px; font-weight:700;">VISA</span><input type="number" id="val_VISA" step="0.01" value="0.00" oninput="calculateFinal()"></div>
+            <div><span style="font-size:9px; font-weight:700;">MASTER</span><input type="number" id="val_MASTER" step="0.01" value="0.00" oninput="calculateFinal()"></div>
+            <div><span style="font-size:9px; font-weight:700;">TRANSFER</span><input type="number" id="val_TRANSFER" step="0.01" value="0.00" oninput="calculateFinal()"></div>
+            <div><span style="font-size:9px; font-weight:700;">E-WALLET</span><input type="number" id="val_EWALLET" step="0.01" value="0.00" oninput="calculateFinal()"></div>
+            <div><span style="font-size:9px; font-weight:700;">VOUCHER</span><input type="number" id="val_VOUCHER" step="0.01" value="0.00" oninput="calculateFinal()"></div>
         </div>
 
-        <div class="input-row">
-            <span class="verify-label">Total Float <span id="floatCalc" class="float-hint">(0 × 300)</span></span>
-            <input type="number" id="editFloat" value="0.00" step="300" oninput="calculateFinal()">
+        <div style="margin-bottom:15px;">
+            <span style="font-size:11px; font-weight:700; color:#64748b;">TOTAL FLOAT</span>
+            <input type="number" id="editFloat" value="0.00" oninput="calculateFinal()">
         </div>
 
         <div class="total-card">
-            <span class="total-label">Final Bank Deposit</span>
+            <span style="font-size:15px; font-weight:800; color:var(--success);">FINAL BANK DEPOSIT</span>
             <span id="resBank">RM 0.00</span>
         </div>
         
@@ -176,43 +80,52 @@
 </div>
 
 <script>
-let scanHistory = []; 
-const digitalKeysMap = {
-    'QR PAY': 'val_QRPAY',
-    'VISA': 'val_VISA',
-    'MASTER': 'val_MASTER',
-    'BANK TRANSFER': 'val_TRANSFER',
-    'GRAB MERCHANT': 'val_EWALLET',
-    'IPAY88': 'val_EWALLET',
-    'VOUCHER': 'val_VOUCHER'
-};
+let scanHistory = [];
+const digitalKeysMap = { 'QR PAY': 'val_QRPAY', 'VISA': 'val_VISA', 'MASTER': 'val_MASTER', 'BANK TRANSFER': 'val_TRANSFER', 'GRAB MERCHANT': 'val_EWALLET', 'IPAY88': 'val_EWALLET', 'VOUCHER': 'val_VOUCHER' };
 
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
-
-async function runOCR() {
+async function processAndRunOCR() {
     const file = document.getElementById('imageInput').files[0];
     if (!file) return;
     const status = document.getElementById('status');
-    status.innerText = "Processing... ⏳";
+    status.innerText = "Enhancing Image... 🪄";
 
-    try {
-        const worker = await Tesseract.createWorker('eng');
-        const { data: { text } } = await worker.recognize(file);
-        await worker.terminate();
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = async () => {
+        const canvas = document.getElementById('processCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // Apply grayscale and contrast for better OCR
+        ctx.filter = 'grayscale(1) contrast(1.5) brightness(1.2)';
+        ctx.drawImage(img, 0, 0);
+        
+        status.innerText = "Scanning Values... ⏳";
+        const processedImage = canvas.toDataURL('image/jpeg', 1.0);
+        
+        try {
+            const worker = await Tesseract.createWorker('eng');
+            await worker.setParameters({
+                tessedit_char_whitelist: '0123456789.ABCDEFGHIJKLMNOPQRSTUVWXYZ ',
+            });
+            const { data: { text } } = await worker.recognize(processedImage);
+            await worker.terminate();
 
-        const data = parseReceipt(text);
-        scanHistory.push(data);
-        updateFields();
-        status.innerText = "Success! Added Scan #" + scanHistory.length + " ✅";
-    } catch (e) {
-        status.innerText = "❌ Scan failed. Try again.";
-    }
-    document.getElementById('imageInput').value = "";
+            const data = parseReceipt(text);
+            scanHistory.push(data);
+            updateFields();
+            status.innerText = "Scan Successful ✅";
+        } catch (e) {
+            status.innerText = "❌ OCR Failed.";
+        }
+    };
 }
 
 function parseReceipt(text) {
     const cleanText = text.replace(/,/g, '').toUpperCase();
     const findVal = (key) => {
+        // Looking for the keyword followed by a decimal number
         const reg = new RegExp(`${key}.*?(\\d+\\.\\d{2})`);
         const m = cleanText.match(reg);
         return m ? parseFloat(m[1]) : 0;
@@ -241,38 +154,24 @@ function updateFields() {
     for (let id in digitalTotals) {
         document.getElementById(id).value = digitalTotals[id].toFixed(2);
     }
-    
     document.getElementById('receiptCount').innerText = scanHistory.length + " SCANNED";
     document.getElementById('editFloat').value = (scanHistory.length * 300).toFixed(2);
-    document.getElementById('floatCalc').innerText = "(" + scanHistory.length + " × 300)";
-
     calculateFinal();
 }
 
 function calculateFinal() {
     const totalCount = parseFloat(document.getElementById('editTotalCount').value) || 0;
     const float = parseFloat(document.getElementById('editFloat').value) || 0;
-    
     let digitalSum = 0;
-    for (let id of new Set(Object.values(digitalKeysMap))) {
+    ['val_QRPAY', 'val_VISA', 'val_MASTER', 'val_TRANSFER', 'val_EWALLET', 'val_VOUCHER'].forEach(id => {
         digitalSum += parseFloat(document.getElementById(id).value) || 0;
-    }
-
+    });
     const bankDeposit = (totalCount - digitalSum) - float;
     document.getElementById('resBank').innerText = "RM " + bankDeposit.toFixed(2);
 }
 
-function undoLastScan() {
-    if (scanHistory.length > 0) {
-        scanHistory.pop();
-        updateFields();
-        document.getElementById('status').innerText = "Last scan removed ↩️";
-    }
-}
-
-function confirmClear() {
-    if(confirm("Are you sure you want to reset everything?")) location.reload();
-}
+function undoLastScan() { if (scanHistory.length > 0) { scanHistory.pop(); updateFields(); } }
+function confirmClear() { if(confirm("Reset?")) location.reload(); }
 </script>
 
 </body>
