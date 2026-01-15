@@ -11,21 +11,23 @@
         :root { --primary: #2563eb; --success: #059669; --danger: #dc2626; --bg: #f8fafc; --card-bg: #ffffff; }
         body { font-family: -apple-system, sans-serif; padding: 10px; margin: 0; background: var(--bg); display: flex; justify-content: center; min-height: 100vh; touch-action: manipulation; }
         .card { background: var(--card-bg); padding: 24px; border-radius: 32px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); width: 100%; max-width: 440px; margin-top: 10px; box-sizing: border-box; }
-        header { text-align: center; margin-bottom: 25px; }
+        header { text-align: center; margin-bottom: 20px; }
         h2 { color: var(--primary); margin: 0; font-weight: 800; font-size: 32px; }
-        .counter-badge { display: inline-block; background: #e2e8f0; color: #475569; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; margin-top: 10px; }
-        .snap-container { display: flex; justify-content: center; width: 100%; }
-        .btn-snap { background: var(--primary); color: white; border: none; padding: 20px; width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); }
-        .status { text-align: center; margin: 15px 0; font-size: 14px; color: #64748b; font-weight: 600; min-height: 20px; }
-        .digital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f1f5f9; padding: 15px; border-radius: 20px; margin-bottom: 15px; }
+        .counter-badge { display: inline-block; background: #e2e8f0; color: #475569; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+        
+        .action-area { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; align-items: center; }
+        .btn-snap { background: var(--primary); color: white; border: none; padding: 18px; width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); }
+        .btn-gallery { background: #f1f5f9; color: #475569; border: none; padding: 10px; width: 80%; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; }
+        
+        .status { text-align: center; margin: 10px 0; font-size: 14px; color: #64748b; font-weight: 600; min-height: 20px; }
+        .digital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f1f5f9; padding: 15px; border-radius: 20px; margin-bottom: 15px; }
         input[type="number"] { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 18px; font-weight: 700; box-sizing: border-box; outline: none; background: #fff; }
-        .total-card { background: #ecfdf5; padding: 24px; border-radius: 24px; border: 2px solid var(--success); text-align: center; }
-        #resBank { color: var(--success); font-size: 36px; font-weight: 900; display: block; }
-        .btn-group { display: flex; gap: 12px; margin-top: 20px; }
-        .btn-undo { flex: 1; background: #fff; color: var(--danger); border: 2px solid var(--danger); padding: 14px; border-radius: 14px; font-weight: 700; }
-        .btn-clear { flex: 2; background: #f1f5f9; color: #64748b; border: none; padding: 14px; border-radius: 14px; font-weight: 700; }
+        .total-card { background: #ecfdf5; padding: 20px; border-radius: 24px; border: 2px solid var(--success); text-align: center; }
+        #resBank { color: var(--success); font-size: 32px; font-weight: 900; display: block; }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-undo { flex: 1; background: #fff; color: var(--danger); border: 2px solid var(--danger); padding: 12px; border-radius: 12px; font-weight: 700; }
+        .btn-clear { flex: 2; background: #f1f5f9; color: #64748b; border: none; padding: 12px; border-radius: 12px; font-weight: 700; }
         input[type="file"] { display: none; }
-        /* Canvas is hidden, used for image processing */
         #processCanvas { display: none; }
     </style>
 </head>
@@ -37,10 +39,14 @@
         <span id="receiptCount" class="counter-badge">0 SCANNED</span>
     </header>
     
-    <div class="snap-container">
+    <div class="action-area">
         <label class="btn-snap">
             📷 &nbsp; SNAP RECEIPT
-            <input type="file" id="imageInput" accept="image/*" capture="environment" onchange="processAndRunOCR()">
+            <input type="file" accept="image/*" capture="environment" onchange="processImage(this)">
+        </label>
+        <label class="btn-gallery">
+            📁 Choose from Gallery
+            <input type="file" accept="image/*" onchange="processImage(this)">
         </label>
     </div>
     
@@ -48,8 +54,8 @@
     <canvas id="processCanvas"></canvas>
 
     <div id="results">
-        <div style="margin-bottom:15px;">
-            <span style="font-size:11px; font-weight:700; color:#64748b;">TOTAL COUNT (SALES + FLOAT)</span>
+        <div style="margin-bottom:10px;">
+            <span style="font-size:11px; font-weight:700; color:#64748b;">TOTAL SALES (SCAN VALUE)</span>
             <input type="number" id="editTotalCount" step="0.01" value="0.00" oninput="calculateFinal()">
         </div>
 
@@ -58,17 +64,17 @@
             <div><span style="font-size:9px; font-weight:700;">VISA</span><input type="number" id="val_VISA" step="0.01" value="0.00" oninput="calculateFinal()"></div>
             <div><span style="font-size:9px; font-weight:700;">MASTER</span><input type="number" id="val_MASTER" step="0.01" value="0.00" oninput="calculateFinal()"></div>
             <div><span style="font-size:9px; font-weight:700;">TRANSFER</span><input type="number" id="val_TRANSFER" step="0.01" value="0.00" oninput="calculateFinal()"></div>
-            <div><span style="font-size:9px; font-weight:700;">E-WALLET</span><input type="number" id="val_EWALLET" step="0.01" value="0.00" oninput="calculateFinal()"></div>
+            <div><span style="font-size:9px; font-weight:700;">GRAB/IPAY</span><input type="number" id="val_EWALLET" step="0.01" value="0.00" oninput="calculateFinal()"></div>
             <div><span style="font-size:9px; font-weight:700;">VOUCHER</span><input type="number" id="val_VOUCHER" step="0.01" value="0.00" oninput="calculateFinal()"></div>
         </div>
 
-        <div style="margin-bottom:15px;">
-            <span style="font-size:11px; font-weight:700; color:#64748b;">TOTAL FLOAT</span>
+        <div style="margin-bottom:10px;">
+            <span style="font-size:11px; font-weight:700; color:#64748b;">TOTAL FLOAT (RM300 x Count)</span>
             <input type="number" id="editFloat" value="0.00" oninput="calculateFinal()">
         </div>
 
         <div class="total-card">
-            <span style="font-size:15px; font-weight:800; color:var(--success);">FINAL BANK DEPOSIT</span>
+            <span style="font-size:14px; font-weight:800; color:var(--success);">FINAL BANK DEPOSIT</span>
             <span id="resBank">RM 0.00</span>
         </div>
         
@@ -81,97 +87,94 @@
 
 <script>
 let scanHistory = [];
-const digitalKeysMap = { 'QR PAY': 'val_QRPAY', 'VISA': 'val_VISA', 'MASTER': 'val_MASTER', 'BANK TRANSFER': 'val_TRANSFER', 'GRAB MERCHANT': 'val_EWALLET', 'IPAY88': 'val_EWALLET', 'VOUCHER': 'val_VOUCHER' };
+const digitalKeysMap = { 
+    'QR PAY': 'val_QRPAY', 'VISA': 'val_VISA', 'MASTER': 'val_MASTER', 
+    'TRANSFER': 'val_TRANSFER', 'GRAB': 'val_EWALLET', 'IPAY': 'val_EWALLET', 'VOUCHER': 'val_VOUCHER' 
+};
 
-async function processAndRunOCR() {
-    const file = document.getElementById('imageInput').files[0];
+async function processImage(input) {
+    const file = input.files[0];
     if (!file) return;
     const status = document.getElementById('status');
-    status.innerText = "Enhancing Image... 🪄";
+    status.innerText = "Processing... 🪄";
 
     const img = new Image();
     img.src = URL.createObjectURL(file);
     img.onload = async () => {
         const canvas = document.getElementById('processCanvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        const scale = 1.5; // Rescale for better OCR
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        ctx.filter = 'contrast(1.4) grayscale(1)';
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
-        // Apply grayscale and contrast for better OCR
-        ctx.filter = 'grayscale(1) contrast(1.5) brightness(1.2)';
-        ctx.drawImage(img, 0, 0);
-        
-        status.innerText = "Scanning Values... ⏳";
-        const processedImage = canvas.toDataURL('image/jpeg', 1.0);
-        
-        try {
-            const worker = await Tesseract.createWorker('eng');
-            await worker.setParameters({
-                tessedit_char_whitelist: '0123456789.ABCDEFGHIJKLMNOPQRSTUVWXYZ ',
-            });
-            const { data: { text } } = await worker.recognize(processedImage);
-            await worker.terminate();
-
-            const data = parseReceipt(text);
-            scanHistory.push(data);
-            updateFields();
-            status.innerText = "Scan Successful ✅";
-        } catch (e) {
-            status.innerText = "❌ OCR Failed.";
-        }
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        runOCR(dataUrl);
     };
+}
+
+async function runOCR(dataUrl) {
+    const status = document.getElementById('status');
+    try {
+        const worker = await Tesseract.createWorker('eng');
+        const { data: { text } } = await worker.recognize(dataUrl);
+        await worker.terminate();
+
+        const data = parseReceipt(text);
+        scanHistory.push(data);
+        updateFields();
+        status.innerText = "Scan Added ✅";
+    } catch (e) {
+        status.innerText = "❌ Scan Error";
+    }
 }
 
 function parseReceipt(text) {
-    const cleanText = text.replace(/,/g, '').toUpperCase();
-    const findVal = (key) => {
-        // Looking for the keyword followed by a decimal number
+    const cleanText = text.toUpperCase().replace(/,/g, '');
+    
+    // Fuzzy matching for Total Count
+    const totalMatch = cleanText.match(/(?:TOTAL|COUNT|NET|AMT).*?(\d+\.\d{2})/);
+    const totalCount = totalMatch ? parseFloat(totalMatch[1]) : 0;
+
+    let digital = {};
+    for (let key in digitalKeysMap) {
         const reg = new RegExp(`${key}.*?(\\d+\\.\\d{2})`);
         const m = cleanText.match(reg);
-        return m ? parseFloat(m[1]) : 0;
-    };
-
-    let result = { totalCount: findVal("TOTAL COUNT"), digital: {} };
-    for (let key in digitalKeysMap) {
-        result.digital[key] = findVal(key);
+        digital[key] = m ? parseFloat(m[1]) : 0;
     }
-    return result;
+    return { totalCount, digital };
 }
 
 function updateFields() {
-    let totalC = 0;
-    let digitalTotals = {};
-    for (let id of Object.values(digitalKeysMap)) { digitalTotals[id] = 0; }
+    let tCount = 0;
+    let dTotals = { val_QRPAY:0, val_VISA:0, val_MASTER:0, val_TRANSFER:0, val_EWALLET:0, val_VOUCHER:0 };
     
-    scanHistory.forEach(item => {
-        totalC += item.totalCount;
-        for (let key in item.digital) {
-            digitalTotals[digitalKeysMap[key]] += item.digital[key];
-        }
+    scanHistory.forEach(s => {
+        tCount += s.totalCount;
+        for (let k in s.digital) { dTotals[digitalKeysMap[k]] += s.digital[k]; }
     });
 
-    document.getElementById('editTotalCount').value = totalC.toFixed(2);
-    for (let id in digitalTotals) {
-        document.getElementById(id).value = digitalTotals[id].toFixed(2);
-    }
+    document.getElementById('editTotalCount').value = tCount.toFixed(2);
+    for (let id in dTotals) document.getElementById(id).value = dTotals[id].toFixed(2);
+    
     document.getElementById('receiptCount').innerText = scanHistory.length + " SCANNED";
     document.getElementById('editFloat').value = (scanHistory.length * 300).toFixed(2);
     calculateFinal();
 }
 
 function calculateFinal() {
-    const totalCount = parseFloat(document.getElementById('editTotalCount').value) || 0;
+    const total = parseFloat(document.getElementById('editTotalCount').value) || 0;
     const float = parseFloat(document.getElementById('editFloat').value) || 0;
-    let digitalSum = 0;
-    ['val_QRPAY', 'val_VISA', 'val_MASTER', 'val_TRANSFER', 'val_EWALLET', 'val_VOUCHER'].forEach(id => {
-        digitalSum += parseFloat(document.getElementById(id).value) || 0;
+    let digi = 0;
+    ['val_QRPAY','val_VISA','val_MASTER','val_TRANSFER','val_EWALLET','val_VOUCHER'].forEach(id => {
+        digi += parseFloat(document.getElementById(id).value) || 0;
     });
-    const bankDeposit = (totalCount - digitalSum) - float;
-    document.getElementById('resBank').innerText = "RM " + bankDeposit.toFixed(2);
+    document.getElementById('resBank').innerText = "RM " + (total - digi - float).toFixed(2);
 }
 
-function undoLastScan() { if (scanHistory.length > 0) { scanHistory.pop(); updateFields(); } }
-function confirmClear() { if(confirm("Reset?")) location.reload(); }
+function undoLastScan() { if(scanHistory.length > 0) { scanHistory.pop(); updateFields(); } }
+function confirmClear() { if(confirm("Reset data?")) location.reload(); }
 </script>
 
 </body>
