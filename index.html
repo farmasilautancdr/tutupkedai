@@ -146,13 +146,15 @@ async function processImage(input) {
     };
 }
 
-// SMART PRICE EXTRACTOR: Handles 2.315.90 -> 2315.90
+// Version 22 Decimal Focus: Strictly handles xx.xx format
 function extractPrice(raw) {
     if (!raw) return 0;
-    // 1. Remove everything except digits and dots
-    let cleaned = raw.replace(/[^0-9.]/g, '');
+    // 1. Remove commas and spaces between digits
+    let cleaned = raw.replace(/,/g, '').replace(/\s(?=\d)/g, '');
+    // 2. Keep only digits and dots
+    cleaned = cleaned.replace(/[^0-9.]/g, '');
     
-    // 2. If there are multiple dots, treat the last one as the decimal
+    // 3. Handle multiple dots (last one is decimal)
     if ((cleaned.match(/\./g) || []).length > 1) {
         let lastDotIdx = cleaned.lastIndexOf('.');
         let integerPart = cleaned.substring(0, lastDotIdx).replace(/\./g, '');
@@ -165,32 +167,34 @@ function extractPrice(raw) {
 }
 
 function parseAndShow(text) {
-    let cleanText = text.toUpperCase().replace(/,/g, '');
+    let cleanText = text.toUpperCase();
     let results = { total: 0, digital: {} };
 
-    // Regex to find numbers with dots (handles 2.315.90 as a chunk)
-    const priceRegex = /\d+[\s\.]+\d+[\s\.]+\d{2}|\d+[\s\.]+\d{2}/g;
-    const allNumbersFound = cleanText.match(priceRegex) || [];
+    // This regex looks for digits followed by a dot/comma and exactly TWO decimal digits.
+    // This ignores quantity numbers (like 1 or 912) because they have no decimal.
+    const currencyRegex = /\d+[\s\.]*\d*[\.\,]\d{2}/g;
+    const allPricesFound = cleanText.match(currencyRegex) || [];
 
-    // A. FIND TOTAL (Primary: Look for label)
+    // A. FIND TOTAL (Primary: Look for "TOTAL COUNT" label)
     const tcIndex = cleanText.indexOf("TOTAL COUNT");
     if (tcIndex !== -1) {
         let snippet = cleanText.substring(tcIndex, tcIndex + 60);
-        let matches = snippet.match(priceRegex);
+        let matches = snippet.match(currencyRegex);
         if (matches) results.total = extractPrice(matches[0]);
     } 
     
-    // B. FAILSAFE FOR TOTAL (If 0 or no label, take the last number on receipt)
-    if (results.total === 0 && allNumbersFound.length > 0) {
-        results.total = extractPrice(allNumbersFound[allNumbersFound.length - 1]);
+    // B. FAILSAFE: If total is still 0, take the last decimal number on receipt
+    if (results.total === 0 && allPricesFound.length > 0) {
+        results.total = extractPrice(allPricesFound[allPricesFound.length - 1]);
     }
 
     // C. FIND DIGITAL PAYMENTS
     for (let [key, id] of Object.entries(digitalKeysMap)) {
         const kIdx = cleanText.indexOf(key);
         if (kIdx !== -1) {
+            // Take the first decimal number appearing within 50 chars of the key
             let snippet = cleanText.substring(kIdx, kIdx + 50);
-            let matches = snippet.match(priceRegex);
+            let matches = snippet.match(currencyRegex);
             if (matches) results.digital[id] = extractPrice(matches[0]);
         }
     }
