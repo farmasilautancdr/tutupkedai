@@ -20,7 +20,7 @@
         .progress-container { width: 100%; height: 8px; background: #e2e8f0; border-radius: 10px; margin: 10px 0; display: none; overflow: hidden; }
         #progressBar { width: 0%; height: 100%; background: var(--primary); transition: width 0.3s ease; }
         .action-area { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; align-items: center; }
-        .btn-snap { background: var(--primary); color: white; border: none; padding: 18px; width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .btn-snap { background: var(--primary); color: white; border: none; padding: 18px; width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; }
         .btn-manual { background: #fff; color: var(--primary); border: 2px solid var(--primary); padding: 12px; width: 100%; border-radius: 18px; font-size: 14px; font-weight: 800; cursor: pointer; }
         .status { text-align: center; margin: 5px 0; font-size: 14px; color: #64748b; font-weight: 600; min-height: 20px; }
         .digital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f1f5f9; padding: 15px; border-radius: 20px; margin-bottom: 15px; }
@@ -123,7 +123,7 @@ async function processImage(input) {
     const file = input.files[0];
     if (!file) return;
     const status = document.getElementById('status'), pWrapper = document.getElementById('progressWrapper'), pBar = document.getElementById('progressBar');
-    status.innerText = "Scanning..."; pWrapper.style.display = "block"; pBar.style.width = "10%";
+    status.innerText = "Analyzing Receipt..."; pWrapper.style.display = "block"; pBar.style.width = "10%";
     
     const img = new Image();
     img.src = URL.createObjectURL(file);
@@ -139,63 +139,57 @@ async function processImage(input) {
         }
         
         const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.8));
-        document.getElementById('debugWin').innerText = "OCR OUT: " + text;
+        document.getElementById('debugWin').innerText = "OCR RAW:\n" + text;
         parseAndShow(text);
         
         status.innerText = "Ready"; pWrapper.style.display = "none"; input.value = ""; 
     };
 }
 
-// Version 22 Decimal Focus: Strictly handles xx.xx format
-function extractPrice(raw) {
-    if (!raw) return 0;
-    // 1. Remove commas and spaces between digits
-    let cleaned = raw.replace(/,/g, '').replace(/\s(?=\d)/g, '');
-    // 2. Keep only digits and dots
-    cleaned = cleaned.replace(/[^0-9.]/g, '');
+// Aggressively targets only the number furthest to the right
+function extractAmountOnly(rawString) {
+    if (!rawString) return 0;
+    // 1. Regex to find currency format (digits followed by . and exactly two digits)
+    const matches = rawString.match(/\d+[\.\,]\d{2}/g);
+    if (!matches) return 0;
     
-    // 3. Handle multiple dots (last one is decimal)
-    if ((cleaned.match(/\./g) || []).length > 1) {
-        let lastDotIdx = cleaned.lastIndexOf('.');
-        let integerPart = cleaned.substring(0, lastDotIdx).replace(/\./g, '');
-        let decimalPart = cleaned.substring(lastDotIdx + 1);
-        cleaned = integerPart + "." + decimalPart;
-    }
+    // 2. Always pick the last match (the rightmost amount)
+    let amountStr = matches[matches.length - 1];
     
-    let val = parseFloat(cleaned);
-    return isNaN(val) ? 0 : val;
+    // 3. Clean and convert to float
+    let cleaned = amountStr.replace(/[^0-9.]/g, '');
+    return parseFloat(cleaned) || 0;
 }
 
 function parseAndShow(text) {
-    let cleanText = text.toUpperCase();
+    let rawLines = text.toUpperCase().split('\n').map(l => l.trim()).filter(l => l.length > 0);
     let results = { total: 0, digital: {} };
 
-    // This regex looks for digits followed by a dot/comma and exactly TWO decimal digits.
-    // This ignores quantity numbers (like 1 or 912) because they have no decimal.
-    const currencyRegex = /\d+[\s\.]*\d*[\.\,]\d{2}/g;
-    const allPricesFound = cleanText.match(currencyRegex) || [];
+    let inPaymentZone = false;
 
-    // A. FIND TOTAL (Primary: Look for "TOTAL COUNT" label)
-    const tcIndex = cleanText.indexOf("TOTAL COUNT");
-    if (tcIndex !== -1) {
-        let snippet = cleanText.substring(tcIndex, tcIndex + 60);
-        let matches = snippet.match(currencyRegex);
-        if (matches) results.total = extractPrice(matches[0]);
-    } 
-    
-    // B. FAILSAFE: If total is still 0, take the last decimal number on receipt
-    if (results.total === 0 && allPricesFound.length > 0) {
-        results.total = extractPrice(allPricesFound[allPricesFound.length - 1]);
-    }
+    for (let i = 0; i < rawLines.length; i++) {
+        let line = rawLines[i];
 
-    // C. FIND DIGITAL PAYMENTS
-    for (let [key, id] of Object.entries(digitalKeysMap)) {
-        const kIdx = cleanText.indexOf(key);
-        if (kIdx !== -1) {
-            // Take the first decimal number appearing within 50 chars of the key
-            let snippet = cleanText.substring(kIdx, kIdx + 50);
-            let matches = snippet.match(currencyRegex);
-            if (matches) results.digital[id] = extractPrice(matches[0]);
+        // Zone Management
+        if (line.includes("BANK TRANSFER")) inPaymentZone = true;
+
+        if (inPaymentZone) {
+            // Process Digital Payment Rows
+            for (let [key, id] of Object.entries(digitalKeysMap)) {
+                if (line.includes(key)) {
+                    // Extract only the right-most decimal number on this line
+                    results.digital[id] = extractAmountOnly(line);
+                }
+            }
+        }
+
+        // Capture Total Sales and end zone
+        if (line.includes("TOTAL") && line.includes("COUNT")) {
+            // Check current line or next line for the amount
+            let combinedLine = line + " " + (rawLines[i+1] || "");
+            results.total = extractAmountOnly(combinedLine);
+            inPaymentZone = false; 
+            break; 
         }
     }
 
@@ -242,7 +236,7 @@ function updateFields() {
 
 function calculateFinal() {
     const total = parseFloat(document.getElementById('editTotalCount').value) || 0;
-    const float = (scanHistory.length * 300);
+    const float = (scanHistory.length * 300); // Correct RM300 float subtraction
     let digi = 0;
     Object.values(digitalKeysMap).forEach(id => digi += (parseFloat(document.getElementById(id).value) || 0));
     document.getElementById('resBank').innerText = "RM " + (total - digi - float).toFixed(2);
