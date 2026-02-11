@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TutupKedai PRO</title>
+    <title>TutupKedai PRO - POS Multi-Terminal</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -36,7 +36,7 @@
         .btn-confirm { background: var(--success); color: white; border: none; padding: 16px; width: 100%; border-radius: 14px; font-weight: 800; font-size: 16px; margin-top: 10px; cursor: pointer; width: 100%; }
         .btn-cancel { background: #fee2e2; color: var(--danger); border: none; padding: 12px; width: 100%; border-radius: 14px; font-weight: 700; margin-top: 8px; cursor: pointer; }
         
-        .history-card { margin-top: 20px; width: 100%; max-width: 440px; background: white; border-radius: 24px; padding: 15px; box-sizing: border-box; }
+        .history-card { margin-top: 20px; width: 100%; max-width: 440px; background: white; border-radius: 24px; padding: 15px; box-sizing: border-box; margin-bottom: 30px; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
         th { text-align: left; color: #64748b; padding-bottom: 8px; }
         td { padding: 10px 0; border-top: 1px solid #f1f5f9; }
@@ -44,9 +44,12 @@
         .btn-edit { color: var(--primary); font-weight: 700; cursor: pointer; margin-right: 10px; }
         .btn-del { color: var(--danger); font-weight: 700; cursor: pointer; }
         
+        .daily-summary-row { background: #eff6ff; border: 2px solid var(--primary); }
+        .daily-summary-content { padding: 12px !important; font-size: 11px; color: #1e40af; }
+        .summary-title { font-weight: 800; text-transform: uppercase; color: var(--primary); display: block; margin-bottom: 4px; }
+        
         #debugWin { display: none; background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; margin-top: 15px; border-radius: 10px; overflow: auto; white-space: pre-wrap; max-height: 150px; }
         input[type="file"], canvas { display: none; }
-        
         .section-label { font-size: 11px; font-weight: 800; color: #64748b; margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
     </style>
 </head>
@@ -92,9 +95,9 @@
     <canvas id="pCanvas"></canvas>
     
     <div id="results">
-        <label class="section-label">Accumulated Totals</label>
+        <label class="section-label">Session Totals (Current List)</label>
         <div style="margin-bottom:15px;">
-            <input type="number" id="editTotalCount" value="0.00" readonly>
+            <input type="number" id="editTotalCount" value="0.00" readonly title="Grand Total of all scanned receipts">
         </div>
 
         <label class="section-label">Digital Sales Summary</label>
@@ -109,7 +112,7 @@
         </div>
 
         <div class="total-card">
-            <span style="font-size:14px; font-weight:800; color:var(--success);">FINAL BANK DEPOSIT (-FLOAT)</span>
+            <span style="font-size:14px; font-weight:800; color:var(--success);">NET BANK DEPOSIT (-FLOAT)</span>
             <span id="resBank">RM 0.00</span>
         </div>
 
@@ -121,7 +124,7 @@
 
 <div class="history-card">
     <header style="text-align: left; margin-bottom: 10px;">
-        <span style="font-weight: 800; color: #475569;">RECEIPT LOG</span>
+        <span style="font-weight: 800; color: #475569;">RECEIPT LOG (SUMMARY EVERY 4 SCANS)</span>
     </header>
     <table>
         <thead><tr><th>#</th><th>Bill Total</th><th>Digital</th><th>Action</th></tr></thead>
@@ -256,36 +259,75 @@ function saveAndRefresh() {
 }
 
 function updateFields() {
-    let tTotal = 0, catTotals = {};
-    Object.values(digitalKeysMap).forEach(id => catTotals[id] = 0);
+    let tTotalAccumulated = 0;
+    let categoryTotalsAccumulated = {};
+    Object.values(digitalKeysMap).forEach(id => categoryTotalsAccumulated[id] = 0);
     
     let html = "";
+    
+    // Grouping variables
+    let dayTotalSales = 0;
+    let dayDigitalSales = {};
+    Object.values(digitalKeysMap).forEach(id => dayDigitalSales[id] = 0);
+
     scanHistory.forEach((s, i) => {
-        tTotal += s.totalCount;
-        let dSum = 0;
+        tTotalAccumulated += s.totalCount;
+        let receiptDigitalSum = 0;
+        
+        // Add to daily group
+        dayTotalSales += s.totalCount;
+
         Object.keys(s.digital).forEach(cat => {
             let val = s.digital[cat] || 0;
-            catTotals[cat] += val;
-            dSum += val;
+            categoryTotalsAccumulated[cat] += val;
+            dayDigitalSales[cat] += val;
+            receiptDigitalSum += val;
         });
         
-        html += `<tr><td>${i+1}</td><td>${s.totalCount.toFixed(2)}</td><td>${dSum.toFixed(2)}</td>
+        // Row for individual receipt
+        html += `<tr><td>${i+1}</td><td>${s.totalCount.toFixed(2)}</td><td>${receiptDigitalSum.toFixed(2)}</td>
                  <td><span class="btn-edit" onclick="editReceipt(${i})">Edit</span>
                  <span class="btn-del" onclick="deleteReceipt(${i})">Del</span></td></tr>`;
+
+        // Check if we hit 4 receipts (Daily marker)
+        if ((i + 1) % 4 === 0) {
+            let totalDayDigital = Object.values(dayDigitalSales).reduce((a, b) => a + b, 0);
+            let dayFloat = 1200; // RM300 x 4 sessions
+            let dayCash = dayTotalSales - totalDayDigital - dayFloat;
+            
+            let digitalBreakdownString = Object.entries(dayDigitalSales)
+                .filter(([_, val]) => val > 0)
+                .map(([id, val]) => `${id.replace('val_','').replace('QRPAY','QR')}: ${val.toFixed(2)}`)
+                .join(" | ");
+
+            html += `<tr class="daily-summary-row">
+                        <td colspan="4" class="daily-summary-content">
+                            <span class="summary-title">🗓️ Daily Summary (Receipts ${(i-2)}-${i+1})</span>
+                            <strong>Total Sales:</strong> RM ${dayTotalSales.toFixed(2)}<br>
+                            <strong>Total Cash (Net):</strong> RM ${dayCash.toFixed(2)} (after RM1,200 float)<br>
+                            <strong>Digital Total:</strong> RM ${totalDayDigital.toFixed(2)}<br>
+                            <small>${digitalBreakdownString || 'No Digital Sales'}</small>
+                        </td>
+                     </tr>`;
+            
+            // Reset daily counters for next block
+            dayTotalSales = 0;
+            Object.values(digitalKeysMap).forEach(id => dayDigitalSales[id] = 0);
+        }
     });
     
-    // Update Main Interface Summary
+    // Update Global Summary at Top
     document.getElementById('historyBody').innerHTML = html;
-    document.getElementById('editTotalCount').value = tTotal.toFixed(2);
-    Object.entries(catTotals).forEach(([id, val]) => {
+    document.getElementById('editTotalCount').value = tTotalAccumulated.toFixed(2);
+    Object.entries(categoryTotalsAccumulated).forEach(([id, val]) => {
         document.getElementById(id).value = val.toFixed(2);
     });
 
     document.getElementById('receiptCount').innerText = scanHistory.length + " SCANNED";
     
-    const totalDigi = Object.values(catTotals).reduce((a, b) => a + b, 0);
-    const float = scanHistory.length * 300;
-    document.getElementById('resBank').innerText = "RM " + (tTotal - totalDigi - float).toFixed(2);
+    const totalDigiGlobal = Object.values(categoryTotalsAccumulated).reduce((a, b) => a + b, 0);
+    const floatGlobal = scanHistory.length * 300;
+    document.getElementById('resBank').innerText = "RM " + (tTotalAccumulated - totalDigiGlobal - floatGlobal).toFixed(2);
 }
 
 function closeModal() { document.getElementById('reviewModal').style.display = "none"; }
