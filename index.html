@@ -221,7 +221,7 @@
     <div class="action-area">
       <label class="btn-snap">SNAP RECEIPT<input type="file" accept="image/*" capture="environment" onchange="processImage(this)"></label>
       <button class="btn-manual" onclick="openManual()">MANUAL ENTRY</button>
-      <button class="btn-retry" id="retryBtn" onclick="retryLastScan()">RE-SCAN &middot; ENHANCE FOR FADED INK</button>
+      <button class="btn-retry" id="retryBtn" onclick="retryLastScan()">RE-SCAN &middot; TRY HARDER (STILL WRONG?)</button>
       <button class="btn-retry" id="recropBtn" onclick="reopenCropForLastImage()">ADJUST CROP &amp; RE-SCAN</button>
     </div>
 
@@ -601,7 +601,7 @@ function confirmCropAndScan() {
 
 function retryLastScan() {
     if (!lastCapturedImg) return;
-    runOCR(lastCapturedImg, 'binarized', 0.65);
+    runOCR(lastCapturedImg, 'binarized', 0.55, { skipAutoEnhance: true });
 }
 
 
@@ -697,30 +697,57 @@ function preprocessForOCR(img, mode, biasFactor) {
     return canvas;
 }
 
-async function runOCR(img, mode, biasFactor) {
-    const status = document.getElementById('status'), pWrapper = document.getElementById('progressWrapper'), pBar = document.getElementById('progressBar');
-    setLed('busy');
-    status.innerText = "Analyzing..."; pWrapper.style.display = "block"; pBar.style.width = "20%";
-
+async function performOcrPass(img, mode, biasFactor) {
     const canvas = preprocessForOCR(img, mode, biasFactor);
-    pBar.style.width = "45%";
-
     if (!worker) worker = await Tesseract.createWorker('eng');
     await worker.setParameters({
         tessedit_char_whitelist: '0123456789.,:/- ABCDEFGHIJKLMNOPQRSTUVWXYZ',
         tessedit_pageseg_mode: '6'
     });
-    pBar.style.width = "70%";
-
     const { data: { text } } = await worker.recognize(canvas.toDataURL('image/png'));
+    return { text, results: parseReceiptText(text) };
+}
+
+// Prefers whichever pass actually found a non-zero value for each field,
+// favoring the base (first) pass when both agree.
+function mergeOcrResults(base, extra) {
+    let merged = { total: base.total || extra.total || 0, digital: {} };
+    digitalCategoryIds.forEach(id => {
+        merged.digital[id] = base.digital[id] || extra.digital[id] || 0;
+    });
+    return merged;
+}
+
+async function runOCR(img, mode, biasFactor, options) {
+    options = options || {};
+    const status = document.getElementById('status'), pWrapper = document.getElementById('progressWrapper'), pBar = document.getElementById('progressBar');
+    setLed('busy');
+    status.innerText = "Analyzing..."; pWrapper.style.display = "block"; pBar.style.width = "20%";
+
+    const pass1 = await performOcrPass(img, mode, biasFactor);
+    pBar.style.width = "55%";
+    let finalResults = pass1.results;
+    let debugText = pass1.text;
+
+    // Auto-enhance: if the first pass couldn't find a total at all (the
+    // clearest sign of a weak read), automatically retry with the more
+    // aggressive faded-ink threshold before showing anything to the user -
+    // no manual tap needed for the common case.
+    if (finalResults.total === 0 && !options.skipAutoEnhance) {
+        status.innerText = "Low confidence - enhancing...";
+        const pass2 = await performOcrPass(img, 'binarized', 0.65);
+        pBar.style.width = "85%";
+        finalResults = mergeOcrResults(pass1.results, pass2.results);
+        debugText = pass1.text + "\n\n--- AUTO-ENHANCED PASS ---\n\n" + pass2.text;
+    }
+
     pBar.style.width = "100%";
-    document.getElementById('debugWin').innerText = text;
-    const results = parseReceiptText(text);
+    document.getElementById('debugWin').innerText = debugText;
 
     document.getElementById('retryBtn').classList.add('show');
     document.getElementById('recropBtn').classList.add('show');
 
-    if (results.total === 0) {
+    if (finalResults.total === 0) {
         setLed('err');
         status.innerText = "Low confidence - check totals";
     } else {
@@ -732,8 +759,8 @@ async function runOCR(img, mode, biasFactor) {
     document.getElementById('editIdx').value = "-1";
     document.getElementById('modalTitle').innerText = "Review Scan";
     document.getElementById('tempDate').value = getSessionDate();
-    document.getElementById('tempTotal').value = results.total.toFixed(2);
-    digitalCategoryIds.forEach(id => document.getElementById('temp_' + id).value = (results.digital[id] || 0).toFixed(2));
+    document.getElementById('tempTotal').value = finalResults.total.toFixed(2);
+    digitalCategoryIds.forEach(id => document.getElementById('temp_' + id).value = (finalResults.digital[id] || 0).toFixed(2));
     document.getElementById('reviewModal').style.display = "flex";
 }
 
