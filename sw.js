@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tutupkedai-v26';
+const CACHE_NAME = 'tutupkedai-v28';
 const ASSETS = [
   './',
   './index.html',
