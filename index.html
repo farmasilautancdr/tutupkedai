@@ -429,6 +429,14 @@ function todayStr() {
     return new Date().toISOString().slice(0, 10);
 }
 
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+            console.log('Service Worker registration failed:', err);
+        });
+    });
+}
+
 function toggleDebug() {
     const dbg = document.getElementById('debugWin');
     dbg.style.display = dbg.style.display === 'block' ? 'none' : 'block';
