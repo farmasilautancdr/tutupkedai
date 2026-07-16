@@ -214,6 +214,10 @@
   </div>
 
   <div class="panel">
+    <div style="margin-bottom:14px;">
+      <label class="section-label">Entry Date (used for scans below)</label>
+      <input type="date" id="sessionDateInput" onchange="setSessionDate(this.value)">
+    </div>
     <div class="action-area">
       <label class="btn-snap">SNAP RECEIPT<input type="file" accept="image/*" capture="environment" onchange="processImage(this)"></label>
       <button class="btn-manual" onclick="openManual()">MANUAL ENTRY</button>
@@ -392,7 +396,20 @@ function loadOutletData(code) {
     document.getElementById('posHeaderLabel').innerText = (outletConfig[code]?.posCount || 1) + ' POS';
     refreshFloatUI();
     refreshUndoUI();
+    refreshSessionDateUI();
     updateFields();
+}
+
+function getSessionDate() {
+    return localStorage.getItem('tk_sessionDate') || todayStr();
+}
+
+function setSessionDate(val) {
+    localStorage.setItem('tk_sessionDate', val || todayStr());
+}
+
+function refreshSessionDateUI() {
+    document.getElementById('sessionDateInput').value = getSessionDate();
 }
 
 function getBundleSize() {
@@ -475,7 +492,7 @@ function setLed(state) {
 function openManual() {
     document.getElementById('editIdx').value = "-1";
     document.getElementById('modalTitle').innerText = "Manual Entry";
-    document.getElementById('tempDate').value = todayStr();
+    document.getElementById('tempDate').value = getSessionDate();
     document.getElementById('tempTotal').value = "0.00";
     digitalCategoryIds.forEach(id => document.getElementById('temp_' + id).value = "0.00");
     document.getElementById('reviewModal').style.display = "flex";
@@ -714,7 +731,7 @@ async function runOCR(img, mode, biasFactor) {
 
     document.getElementById('editIdx').value = "-1";
     document.getElementById('modalTitle').innerText = "Review Scan";
-    document.getElementById('tempDate').value = results.date || todayStr();
+    document.getElementById('tempDate').value = getSessionDate();
     document.getElementById('tempTotal').value = results.total.toFixed(2);
     digitalCategoryIds.forEach(id => document.getElementById('temp_' + id).value = (results.digital[id] || 0).toFixed(2));
     document.getElementById('reviewModal').style.display = "flex";
@@ -736,24 +753,9 @@ function extractAmountOnly(rawString) {
     return parseFloat(intPart + '.' + decPart) || 0;
 }
 
-function extractDateFromLines(rawLines) {
-    for (let line of rawLines) {
-        if (line.includes("DATE")) {
-            let m = line.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
-            if (m) {
-                let dd = m[1].padStart(2, '0');
-                let mm = m[2].padStart(2, '0');
-                let yyyy = m[3].length === 2 ? '20' + m[3] : m[3];
-                return yyyy + '-' + mm + '-' + dd;
-            }
-        }
-    }
-    return null;
-}
-
 function parseReceiptText(text) {
     let rawLines = text.toUpperCase().split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    let results = { total: 0, digital: {}, date: extractDateFromLines(rawLines) };
+    let results = { total: 0, digital: {} };
     let inPaymentZone = false;
 
     for (let i = 0; i < rawLines.length; i++) {
@@ -765,9 +767,16 @@ function parseReceiptText(text) {
             }
         }
         // "TOTAL COUNT" is sometimes garbled by OCR (faded print), so a line
-        // containing just "COUNT" alongside a decimal amount is accepted too.
-        if ((line.includes("TOTAL") && line.includes("COUNT")) || (line.includes("COUNT") && /\d[\d,.]*[.,]\d{2}/.test(line + (rawLines[i+1] || "")))) {
-            results.total = extractAmountOnly(line + " " + (rawLines[i+1] || ""));
+        // containing just "COUNT" alongside a decimal amount is accepted too,
+        // and so is the heavily-compressed "T C : 1234.56" form seen when the
+        // watermark wipes out most of both words but leaves the initials.
+        let compactLine = line.replace(/\s+/g, '');
+        let looksLikeTotalCount = (line.includes("TOTAL") && line.includes("COUNT"))
+            || (line.includes("COUNT") && /\d[\d,.]*[.,]\d{2}/.test(line + (rawLines[i+1] || "")))
+            || /^TC:?[\d,.]+$/.test(compactLine);
+        if (looksLikeTotalCount) {
+            let ownLineAmount = extractAmountOnly(line);
+            results.total = ownLineAmount !== 0 ? ownLineAmount : extractAmountOnly(line + " " + (rawLines[i+1] || ""));
             inPaymentZone = false; break;
         }
     }
