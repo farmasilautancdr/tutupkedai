@@ -1,12 +1,13 @@
 {
-  "name": "TutupKedai",
+  "name": "TutupKedai PRO",
   "short_name": "TutupKedai",
-  "description": "Smart batch receipt scanner and bank deposit calculator",
+  "description": "Multi-outlet, multi-terminal POS closing scanner and bank deposit calculator",
   "start_url": "index.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f8fafc",
-  "theme_color": "#2563eb",
+  "background_color": "#14171c",
+  "theme_color": "#14171c",
   "icons": [
     {
       "src": "icon.png",
