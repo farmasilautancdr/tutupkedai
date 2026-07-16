@@ -769,11 +769,12 @@ function parseReceiptText(text) {
         // "TOTAL COUNT" is sometimes garbled by OCR (faded print), so a line
         // containing just "COUNT" alongside a decimal amount is accepted too,
         // and so is the heavily-compressed "T C : 1234.56" form seen when the
-        // watermark wipes out most of both words but leaves the initials.
-        let compactLine = line.replace(/\s+/g, '');
+        // watermark wipes out most of both words but leaves the initials -
+        // searched anywhere in the line since stray punctuation (".", "-")
+        // often surrounds it depending on how badly that spot faded.
         let looksLikeTotalCount = (line.includes("TOTAL") && line.includes("COUNT"))
             || (line.includes("COUNT") && /\d[\d,.]*[.,]\d{2}/.test(line + (rawLines[i+1] || "")))
-            || /^TC:?[\d,.]+$/.test(compactLine);
+            || /T\s*C\s*[:\-]?\s*\d[\d,.]*[.,]\d{2}/.test(line);
         if (looksLikeTotalCount) {
             let ownLineAmount = extractAmountOnly(line);
             results.total = ownLineAmount !== 0 ? ownLineAmount : extractAmountOnly(line + " " + (rawLines[i+1] || ""));
