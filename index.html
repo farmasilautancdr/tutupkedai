@@ -11,14 +11,29 @@
   :root{
     --bg:#14171c; --panel:#1d2128; --panel-alt:#242931; --border:#3a4049; --border-lt:#565e6a;
     --accent:#ffb020; --accent-dim:#7a5714; --success:#2ecc71; --danger:#ff4d4d; --text:#e8eaed; --text-dim:#8b93a1;
+    --input-bg:#0d0f13; --input-readonly-bg:#101318; --input-readonly-text:#c9cfd8;
+    --success-bg:#0d1f16; --success-text-soft:#7fe3a3; --success-contrast:#0d1f16; --success-border:#1c8f4f;
+    --danger-bg:#2a1414; --danger-border:#5c2323;
+    --summary-bg:#241c0a; --summary-text:#e9c77a;
+    --texture-stripe: rgba(255,255,255,0.015);
     --mono:'Consolas','SFMono-Regular','Courier New',monospace;
     --sans:'Arial Narrow',Arial,Helvetica,sans-serif;
+  }
+  body.light-mode{
+    --bg:#eef0f3; --panel:#ffffff; --panel-alt:#f3f5f7; --border:#ccd2da; --border-lt:#a9b1bc;
+    --accent:#b45f06; --accent-dim:#f0dcb8; --success:#16a34a; --danger:#dc2626; --text:#1a1d23; --text-dim:#5b6472;
+    --input-bg:#ffffff; --input-readonly-bg:#f3f5f7; --input-readonly-text:#3a4049;
+    --success-bg:#e8f8ee; --success-text-soft:#15803d; --success-contrast:#ffffff; --success-border:#16a34a;
+    --danger-bg:#fde8e8; --danger-border:#dc2626;
+    --summary-bg:#fdf1dc; --summary-text:#92400e;
+    --texture-stripe: rgba(0,0,0,0.02);
   }
   *{box-sizing:border-box;}
   body{
     font-family:var(--sans); margin:0; padding:12px; background:var(--bg); color:var(--text);
     display:flex; flex-direction:column; align-items:center; min-height:100vh; touch-action:manipulation;
-    background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.015) 0px,rgba(255,255,255,0.015) 1px,transparent 1px,transparent 3px);
+    background-image:repeating-linear-gradient(0deg,var(--texture-stripe) 0px,var(--texture-stripe) 1px,transparent 1px,transparent 3px);
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
   .panel{
     background:var(--panel); border:2px solid var(--border); border-radius:4px;
@@ -80,18 +95,18 @@
 
   input[type="number"]{
     width:100%; padding:10px; border-radius:3px; border:2px solid var(--border); font-size:16px; font-weight:700;
-    font-family:var(--mono); background:#0d0f13; color:var(--accent); outline:none;
+    font-family:var(--mono); background:var(--input-bg); color:var(--accent); outline:none;
   }
-  input[readonly]{ background:#101318; color:#c9cfd8; border-color:var(--border); }
+  input[readonly]{ background:var(--input-readonly-bg); color:var(--input-readonly-text); border-color:var(--border); }
 
   .total-card{
-    background:#0d1f16; padding:16px; border-radius:4px; border:2px solid var(--success); text-align:center;
+    background:var(--success-bg); padding:16px; border-radius:4px; border:2px solid var(--success); text-align:center;
   }
-  .total-card .tag{ color:#7fe3a3; }
+  .total-card .tag{ color:var(--success-text-soft); }
   #resBank{ color:var(--success); font-size:28px; font-weight:900; display:block; font-family:var(--mono); margin-top:4px;}
 
-  .btn-confirm{ background:var(--success); color:#0d1f16; border:2px solid #1c8f4f; padding:14px; width:100%; border-radius:3px; font-weight:900; font-size:14px; margin-top:10px; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px;}
-  .btn-cancel{ background:#2a1414; color:var(--danger); border:2px solid #5c2323; padding:11px; width:100%; border-radius:3px; font-weight:800; margin-top:8px; cursor:pointer; text-transform:uppercase; font-size:12px; letter-spacing:0.5px;}
+  .btn-confirm{ background:var(--success); color:var(--success-contrast); border:2px solid var(--success-border); padding:14px; width:100%; border-radius:3px; font-weight:900; font-size:14px; margin-top:10px; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px;}
+  .btn-cancel{ background:var(--danger-bg); color:var(--danger); border:2px solid var(--danger-border); padding:11px; width:100%; border-radius:3px; font-weight:800; margin-top:8px; cursor:pointer; text-transform:uppercase; font-size:12px; letter-spacing:0.5px;}
   .btn-confirm:active,.btn-cancel:active{ transform:translate(1px,1px); }
 
   .settings-row{ display:flex; gap:8px; margin-top:8px; }
@@ -108,8 +123,8 @@
   .btn-edit{ color:var(--accent); font-weight:700; cursor:pointer; margin-right:10px;}
   .btn-del{ color:var(--danger); font-weight:700; cursor:pointer;}
 
-  .daily-summary-row{ background:#241c0a; border-top:2px solid var(--accent-dim);}
-  .daily-summary-content{ padding:10px 2px !important; font-size:10px; color:#e9c77a; line-height:1.5;}
+  .daily-summary-row{ background:var(--summary-bg); border-top:2px solid var(--accent-dim);}
+  .daily-summary-content{ padding:10px 2px !important; font-size:10px; color:var(--summary-text); line-height:1.5;}
   .summary-title{ font-weight:900; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:4px; letter-spacing:0.5px;}
 
   #reviewModal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:1000; align-items:center; justify-content:center; padding:15px;}
@@ -126,7 +141,7 @@
 
   input[type="date"]{
     width:100%; padding:9px; border-radius:3px; border:2px solid var(--border); font-size:14px; font-weight:700;
-    font-family:var(--mono); background:#0d0f13; color:var(--accent); outline:none;
+    font-family:var(--mono); background:var(--input-bg); color:var(--accent); outline:none;
   }
   .float-row{ display:none; align-items:center; gap:8px; margin:10px 0; }
   .float-row .section-label{ flex-shrink:0; border:none; padding:0; margin:0; white-space:nowrap; }
@@ -134,7 +149,7 @@
     flex:1; background:var(--panel-alt); border:1px solid var(--border); color:var(--text-dim); font-size:10px;
     font-weight:800; padding:8px 4px; border-radius:3px; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px; text-align:center;
   }
-  .btn-toggle.on{ color:var(--accent); border-color:var(--accent-dim); background:#241c0a; }
+  .btn-toggle.on{ color:var(--accent); border-color:var(--accent-dim); background:var(--summary-bg); }
   #printArea{ display:none; }
   @media print{
     body *{ visibility:hidden; }
@@ -144,13 +159,17 @@
 </style>
 </head>
 <body>
+<script>if (localStorage.getItem('tk_theme') === 'light') { document.body.classList.add('light-mode'); }</script>
 
 <!-- ===== SETUP: OUTLET SELECT ===== -->
 <div id="setupOutletScreen" class="screen panel">
+  <div style="display:flex; justify-content:flex-end; margin-bottom:-6px;">
+    <button onclick="toggleTheme()" style="background:var(--panel-alt); border:1px solid var(--border); color:var(--text-dim); font-size:13px; padding:5px 9px; border-radius:3px; cursor:pointer; line-height:1;">&#9789;</button>
+  </div>
   <h3 class="screen-title">Select Outlet</h3>
   <p class="screen-sub">Each outlet keeps its own separate closing data</p>
   <div class="grid-outlets" id="outletGrid"></div>
-  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.2</p>
+  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.3</p>
 </div>
 
 <!-- ===== SETUP: POS COUNT SELECT ===== -->
@@ -181,12 +200,13 @@
     </div>
     <label class="section-label">Digital Breakdown</label>
     <div class="digital-grid">
+      <div><span>BANK TRANSFER</span><input type="number" id="temp_val_TRANSFER" step="0.01" onfocus="this.select()"></div>
+      <div><span>GRAB MERCHANT</span><input type="number" id="temp_val_GRAB" step="0.01" onfocus="this.select()"></div>
+      <div><span>IPAY88</span><input type="number" id="temp_val_IPAY" step="0.01" onfocus="this.select()"></div>
+      <div><span>MASTER</span><input type="number" id="temp_val_MASTER" step="0.01" onfocus="this.select()"></div>
+      <div><span>MISI</span><input type="number" id="temp_val_MISI" step="0.01" onfocus="this.select()"></div>
       <div><span>QR PAY</span><input type="number" id="temp_val_QRPAY" step="0.01" onfocus="this.select()"></div>
       <div><span>VISA</span><input type="number" id="temp_val_VISA" step="0.01" onfocus="this.select()"></div>
-      <div><span>MASTER</span><input type="number" id="temp_val_MASTER" step="0.01" onfocus="this.select()"></div>
-      <div><span>TRANSFER</span><input type="number" id="temp_val_TRANSFER" step="0.01" onfocus="this.select()"></div>
-      <div><span>GRAB</span><input type="number" id="temp_val_GRAB" step="0.01" onfocus="this.select()"></div>
-      <div><span>IPAY88</span><input type="number" id="temp_val_IPAY" step="0.01" onfocus="this.select()"></div>
       <div><span>VOUCHER</span><input type="number" id="temp_val_VOUCHER" step="0.01" onfocus="this.select()"></div>
     </div>
     <button class="btn-confirm" onclick="confirmScan()">SAVE ENTRY</button>
@@ -210,8 +230,11 @@
 <!-- ===== MAIN APP ===== -->
 <div id="mainApp" style="display:none; width:100%; display:flex; flex-direction:column; align-items:center;">
   <div class="topbar">
-    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.2</span></span>
-    <span class="tag"><span class="led ready" id="statusLed"></span><span id="outletHeaderLabel">--</span> / <span id="posHeaderLabel">--</span></span>
+    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.3</span></span>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span class="tag"><span class="led ready" id="statusLed"></span><span id="outletHeaderLabel">--</span> / <span id="posHeaderLabel">--</span></span>
+      <button id="themeToggleBtn" onclick="toggleTheme()" style="background:var(--panel); border:1px solid var(--border); color:var(--text-dim); font-size:13px; padding:5px 9px; border-radius:3px; cursor:pointer; line-height:1;">&#9789;</button>
+    </div>
   </div>
 
   <div class="panel">
@@ -239,12 +262,13 @@
 
       <label class="section-label">Digital Sales Summary</label>
       <div class="digital-grid">
+        <div><span>BANK TRANSFER</span><input type="number" id="val_TRANSFER" value="0.00" readonly></div>
+        <div><span>GRAB MERCHANT</span><input type="number" id="val_GRAB" value="0.00" readonly></div>
+        <div><span>IPAY88</span><input type="number" id="val_IPAY" value="0.00" readonly></div>
+        <div><span>MASTER</span><input type="number" id="val_MASTER" value="0.00" readonly></div>
+        <div><span>MISI</span><input type="number" id="val_MISI" value="0.00" readonly></div>
         <div><span>QR PAY</span><input type="number" id="val_QRPAY" value="0.00" readonly></div>
         <div><span>VISA</span><input type="number" id="val_VISA" value="0.00" readonly></div>
-        <div><span>MASTER</span><input type="number" id="val_MASTER" value="0.00" readonly></div>
-        <div><span>TRANSFER</span><input type="number" id="val_TRANSFER" value="0.00" readonly></div>
-        <div><span>GRAB</span><input type="number" id="val_GRAB" value="0.00" readonly></div>
-        <div><span>IPAY88</span><input type="number" id="val_IPAY" value="0.00" readonly></div>
         <div><span>VOUCHER</span><input type="number" id="val_VOUCHER" value="0.00" readonly></div>
       </div>
 
@@ -294,7 +318,7 @@
 <script>
 const allOutlets = ["AJ","B6","BB","BG","BJR","BP","CDR","CK","DG","DGD","GB","GBD","GM","HL","HQ","HQCT","JL","JLD","JTH","KB","KBKK","KBKS","KBTJ","KKR","KL","KMD","KMN","KMSK","KS","MC","MCD","MLR","MR","PC","PDM","PK","PM","PP","PPK","PSPD","PT","RJ","SLS","SMR","ST","TM","TMD","TMT","TPOH","TPT","WM"];
 
-const digitalCategoryIds = ['val_TRANSFER', 'val_GRAB', 'val_IPAY', 'val_MASTER', 'val_QRPAY', 'val_VISA', 'val_VOUCHER'];
+const digitalCategoryIds = ['val_TRANSFER', 'val_GRAB', 'val_IPAY', 'val_MASTER', 'val_MISI', 'val_QRPAY', 'val_VISA', 'val_VOUCHER'];
 
 // Each category lists alternate OCR misreads seen in practice (e.g. "QR" often
 // reads as "GR"/"OR", "88" often reads as "S8") so a single garbled character
@@ -304,6 +328,7 @@ const digitalKeysMap = {
     val_GRAB: ['GRAB MERCHANT', 'GRABMERCHANT', 'GRAB'],
     val_IPAY: ['IPAY88', 'IPAYS8', 'IPAY'],
     val_MASTER: ['MASTER'],
+    val_MISI: ['MISI', 'MIST', 'MISTI', 'MI51'],
     val_QRPAY: ['QR PAY', 'GR PAY', 'OR PAY', 'QRPAY'],
     val_VISA: ['VISA'],
     val_VOUCHER: ['VOUCHER', 'MOUCHER']
@@ -464,6 +489,11 @@ function refreshUndoUI() {
 
 function todayStr() {
     return new Date().toISOString().slice(0, 10);
+}
+
+function toggleTheme() {
+    const isLight = document.body.classList.toggle('light-mode');
+    localStorage.setItem('tk_theme', isLight ? 'light' : 'dark');
 }
 
 if ('serviceWorker' in navigator) {
