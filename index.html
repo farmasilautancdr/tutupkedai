@@ -150,6 +150,7 @@
   <h3 class="screen-title">Select Outlet</h3>
   <p class="screen-sub">Each outlet keeps its own separate closing data</p>
   <div class="grid-outlets" id="outletGrid"></div>
+  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.1</p>
 </div>
 
 <!-- ===== SETUP: POS COUNT SELECT ===== -->
@@ -209,7 +210,7 @@
 <!-- ===== MAIN APP ===== -->
 <div id="mainApp" style="display:none; width:100%; display:flex; flex-direction:column; align-items:center;">
   <div class="topbar">
-    <span class="brand" onclick="toggleDebug()">TutupKedai</span>
+    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.1</span></span>
     <span class="tag"><span class="led ready" id="statusLed"></span><span id="outletHeaderLabel">--</span> / <span id="posHeaderLabel">--</span></span>
   </div>
 
@@ -628,12 +629,50 @@ function applyGentleColorStretch(data, n) {
     }
 }
 
+// Estimates uneven lighting (hand shadows, glare gradients) by shrinking the
+// grayscale image down small enough that only broad brightness variation
+// survives (fine text disappears at that scale), then dividing the original
+// by that blurred "lighting map" to flatten it out before thresholding.
+function removeShadow(gray, width, height) {
+    const fullCanvas = document.createElement('canvas');
+    fullCanvas.width = width; fullCanvas.height = height;
+    const fullCtx = fullCanvas.getContext('2d');
+    const fullImgData = fullCtx.createImageData(width, height);
+    for (let j = 0; j < gray.length; j++) {
+        const v = gray[j];
+        fullImgData.data[j*4] = v; fullImgData.data[j*4+1] = v; fullImgData.data[j*4+2] = v; fullImgData.data[j*4+3] = 255;
+    }
+    fullCtx.putImageData(fullImgData, 0, 0);
+
+    const smallW = Math.max(24, Math.round(width / 30));
+    const smallH = Math.max(24, Math.round(height / 30));
+    const smallCanvas = document.createElement('canvas');
+    smallCanvas.width = smallW; smallCanvas.height = smallH;
+    const smallCtx = smallCanvas.getContext('2d');
+    smallCtx.drawImage(fullCanvas, 0, 0, smallW, smallH);
+
+    const bgCanvas = document.createElement('canvas');
+    bgCanvas.width = width; bgCanvas.height = height;
+    const bgCtx = bgCanvas.getContext('2d');
+    bgCtx.imageSmoothingEnabled = true;
+    bgCtx.drawImage(smallCanvas, 0, 0, width, height);
+    const bgData = bgCtx.getImageData(0, 0, width, height).data;
+
+    const corrected = new Uint8ClampedArray(gray.length);
+    for (let j = 0; j < gray.length; j++) {
+        const bg = Math.max(bgData[j*4], 15);
+        let v = (gray[j] / bg) * 210;
+        corrected[j] = v < 0 ? 0 : (v > 255 ? 255 : v);
+    }
+    return corrected;
+}
+
 // --- IMAGE PREPROCESSING ---
 // mode 'color': crop + gentle color-preserving brighten. Best for most receipts -
 //   the LSTM OCR engine generally reads clean grayscale/color better than a
 //   harshly binarized image, and color can help separate ink from watermarks.
-// mode 'binarized': crop + grayscale + percentile auto-brighten + Otsu threshold.
-//   Used for the manual "RE-SCAN / ENHANCE" retry on genuinely faded receipts.
+// mode 'binarized': crop + grayscale + shadow removal + percentile auto-brighten
+//   + Otsu threshold. Used for the primary scan and the faded-ink retry.
 // biasFactor < 1 leans the binarize threshold lighter, catching faded/light ink.
 function preprocessForOCR(img, mode, biasFactor) {
     const crop = lastCropRect || { x0: 0, y0: 0, x1: img.width, y1: img.height };
@@ -661,6 +700,8 @@ function preprocessForOCR(img, mode, biasFactor) {
     for (let i = 0, j = 0; i < data.length; i += 4, j++) {
         gray[j] = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
     }
+    gray = removeShadow(gray, canvas.width, canvas.height);
+
     let rawHist = new Array(256).fill(0);
     for (let j = 0; j < n; j++) rawHist[gray[j]]++;
     let clipCount = Math.round(n * 0.02);
@@ -729,11 +770,13 @@ async function runOCR(img, mode, biasFactor, options) {
     let finalResults = pass1.results;
     let debugText = pass1.text;
 
-    // Auto-enhance: if the first pass couldn't find a total at all (the
-    // clearest sign of a weak read), automatically retry with the more
+    // Auto-enhance: if the first pass couldn't find a total, or matched too
+    // few of the 7 known categories (a sign of a generally weak read even
+    // when the total slipped through), automatically retry with the more
     // aggressive faded-ink threshold before showing anything to the user -
     // no manual tap needed for the common case.
-    if (finalResults.total === 0 && !options.skipAutoEnhance) {
+    const weakRead = finalResults.total === 0 || (finalResults.matchedCategories || 0) < 5;
+    if (weakRead && !options.skipAutoEnhance) {
         status.innerText = "Low confidence - enhancing...";
         const pass2 = await performOcrPass(img, 'binarized', 0.65);
         pBar.style.width = "85%";
@@ -815,6 +858,7 @@ function parseReceiptText(text) {
             }
         }
     }
+    results.matchedCategories = matchedCategories;
     return results;
 }
 
