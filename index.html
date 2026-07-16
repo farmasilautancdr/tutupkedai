@@ -474,14 +474,14 @@ async function processImage(input) {
     img.src = URL.createObjectURL(file);
     img.onload = async () => {
         lastCapturedImg = img;
-        await runOCR(img, 'color', 0.88);
+        await runOCR(img, 'binarized', 0.88);
         input.value = "";
     };
 }
 
 function retryLastScan() {
     if (!lastCapturedImg) return;
-    runOCR(lastCapturedImg, 'binarized', 0.68);
+    runOCR(lastCapturedImg, 'binarized', 0.65);
 }
 
 // --- AUTO-CROP: find the receipt paper within the photo by looking for a large,
