@@ -1,160 +1,448 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TutupKedai PRO - POS Multi-Terminal</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2563eb">
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <style>
-        :root { --primary: #2563eb; --success: #059669; --danger: #dc2626; --bg: #f8fafc; --card-bg: #ffffff; }
-        body { font-family: -apple-system, sans-serif; padding: 10px; margin: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; min-height: 100vh; touch-action: manipulation; }
-        .card { background: var(--card-bg); padding: 24px; border-radius: 32px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); width: 100%; max-width: 440px; margin-top: 10px; box-sizing: border-box; }
-        header { text-align: center; margin-bottom: 20px; }
-        h2 { color: var(--primary); margin: 0; font-weight: 800; font-size: 32px; cursor: pointer; }
-        .counter-badge { display: inline-block; background: #e2e8f0; color: #475569; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; }
-        
-        #reviewModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; padding: 15px; box-sizing: border-box; }
-        .modal-content { background: white; width: 100%; max-width: 400px; border-radius: 28px; padding: 20px; max-height: 90vh; overflow-y: auto; }
-        .modal-header { font-weight: 800; font-size: 20px; color: var(--primary); margin-bottom: 15px; text-align: center; }
-        
-        .progress-container { width: 100%; height: 8px; background: #e2e8f0; border-radius: 10px; margin: 10px 0; display: none; overflow: hidden; }
-        #progressBar { width: 0%; height: 100%; background: var(--primary); transition: width 0.3s ease; }
-        
-        .action-area { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; align-items: center; }
-        .btn-snap { background: var(--primary); color: white; border: none; padding: 18px; width: 100%; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; width: 100%; }
-        .btn-manual { background: #fff; color: var(--primary); border: 2px solid var(--primary); padding: 12px; width: 100%; border-radius: 18px; font-size: 14px; font-weight: 800; cursor: pointer; }
-        
-        .digital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f1f5f9; padding: 15px; border-radius: 20px; margin-bottom: 15px; }
-        input[type="number"] { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 18px; font-weight: 700; box-sizing: border-box; outline: none; background: #fff; }
-        input[readonly] { background: #f8fafc; color: #64748b; border-color: #e2e8f0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TutupKedai PRO - POS Multi-Terminal</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14171c">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+  :root{
+    --bg:#14171c; --panel:#1d2128; --panel-alt:#242931; --border:#3a4049; --border-lt:#565e6a;
+    --accent:#ffb020; --accent-dim:#7a5714; --success:#2ecc71; --danger:#ff4d4d; --text:#e8eaed; --text-dim:#8b93a1;
+    --mono:'Consolas','SFMono-Regular','Courier New',monospace;
+    --sans:'Arial Narrow',Arial,Helvetica,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:var(--sans); margin:0; padding:12px; background:var(--bg); color:var(--text);
+    display:flex; flex-direction:column; align-items:center; min-height:100vh; touch-action:manipulation;
+    background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.015) 0px,rgba(255,255,255,0.015) 1px,transparent 1px,transparent 3px);
+  }
+  .panel{
+    background:var(--panel); border:2px solid var(--border); border-radius:4px;
+    padding:16px; width:100%; max-width:440px; margin-top:10px; box-shadow:4px 4px 0 rgba(0,0,0,0.35);
+  }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between; width:100%; max-width:440px;
+    padding:8px 12px; background:var(--panel-alt); border:2px solid var(--border); border-radius:4px;
+  }
+  .brand{ font-weight:900; letter-spacing:1px; color:var(--accent); font-size:20px; text-transform:uppercase; cursor:pointer;}
+  .led{ display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--text-dim); margin-right:6px; vertical-align:middle;}
+  .led.ready{ background:var(--success); box-shadow:0 0 6px var(--success);}
+  .led.busy{ background:var(--accent); box-shadow:0 0 6px var(--accent); animation:pulse 0.9s infinite;}
+  .led.err{ background:var(--danger); box-shadow:0 0 6px var(--danger);}
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+  .tag{ font-family:var(--mono); font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;}
 
-        .total-card { background: #ecfdf5; padding: 20px; border-radius: 24px; border: 2px solid var(--success); text-align: center; }
-        #resBank { color: var(--success); font-size: 32px; font-weight: 900; display: block; }
-        
-        .btn-confirm { background: var(--success); color: white; border: none; padding: 16px; width: 100%; border-radius: 14px; font-weight: 800; font-size: 16px; margin-top: 10px; cursor: pointer; width: 100%; }
-        .btn-cancel { background: #fee2e2; color: var(--danger); border: none; padding: 12px; width: 100%; border-radius: 14px; font-weight: 700; margin-top: 8px; cursor: pointer; }
-        
-        .history-card { margin-top: 20px; width: 100%; max-width: 440px; background: white; border-radius: 24px; padding: 15px; box-sizing: border-box; margin-bottom: 30px; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th { text-align: left; color: #64748b; padding-bottom: 8px; }
-        td { padding: 10px 0; border-top: 1px solid #f1f5f9; }
-        
-        .btn-edit { color: var(--primary); font-weight: 700; cursor: pointer; margin-right: 10px; }
-        .btn-del { color: var(--danger); font-weight: 700; cursor: pointer; }
-        
-        .daily-summary-row { background: #eff6ff; border: 2px solid var(--primary); }
-        .daily-summary-content { padding: 12px !important; font-size: 11px; color: #1e40af; }
-        .summary-title { font-weight: 800; text-transform: uppercase; color: var(--primary); display: block; margin-bottom: 4px; }
-        
-        #debugWin { display: none; background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; margin-top: 15px; border-radius: 10px; overflow: auto; white-space: pre-wrap; max-height: 150px; }
-        input[type="file"], canvas { display: none; }
-        .section-label { font-size: 11px; font-weight: 800; color: #64748b; margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
-    </style>
+  .section-label{ font-size:10px; font-weight:800; color:var(--text-dim); margin-bottom:6px; display:block; text-transform:uppercase; letter-spacing:1.5px; border-bottom:1px solid var(--border); padding-bottom:4px;}
+
+  h3.screen-title{ color:var(--accent); text-transform:uppercase; letter-spacing:1.5px; font-size:16px; text-align:center; margin:4px 0 14px; }
+  p.screen-sub{ color:var(--text-dim); font-size:12px; text-align:center; margin:-8px 0 14px; }
+
+  .grid-outlets{ display:grid; grid-template-columns:repeat(5,1fr); gap:6px; max-height:52vh; overflow-y:auto; padding:4px 2px; }
+  .btn-outlet{
+    background:var(--panel-alt); color:var(--text); border:2px solid var(--border); border-radius:3px;
+    padding:10px 2px; font-family:var(--mono); font-weight:700; font-size:12px; cursor:pointer; text-align:center;
+  }
+  .btn-outlet:active{ background:var(--accent); color:#14171c; border-color:var(--accent); transform:translate(1px,1px); }
+  .btn-outlet.current{ border-color:var(--accent); color:var(--accent); }
+
+  .pos-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+  .btn-pos{
+    background:var(--panel-alt); border:2px solid var(--border); border-radius:3px; padding:22px 8px;
+    color:var(--text); cursor:pointer; text-align:center;
+  }
+  .btn-pos .num{ font-family:var(--mono); font-size:30px; font-weight:900; color:var(--accent); display:block; }
+  .btn-pos .lbl{ font-size:10px; letter-spacing:1px; color:var(--text-dim); text-transform:uppercase; }
+  .btn-pos:active{ transform:translate(2px,2px); border-color:var(--accent); }
+
+  .btn-snap{
+    background:var(--accent); color:#14171c; border:2px solid var(--accent-dim); padding:16px; width:100%;
+    border-radius:3px; font-size:16px; font-weight:900; letter-spacing:1px; cursor:pointer; text-transform:uppercase;
+    box-shadow:3px 3px 0 rgba(0,0,0,0.4);
+  }
+  .btn-snap:active{ transform:translate(2px,2px); box-shadow:1px 1px 0 rgba(0,0,0,0.4); }
+  .btn-manual, .btn-retry{
+    background:var(--panel-alt); color:var(--text); border:2px solid var(--border); padding:11px;
+    width:100%; border-radius:3px; font-size:12px; font-weight:800; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px;
+  }
+  .btn-retry{ color:var(--accent); border-color:var(--accent-dim); display:none; }
+  .btn-retry.show{ display:block; }
+  .btn-manual:active, .btn-retry:active{ transform:translate(1px,1px); }
+
+  .action-area{ display:flex; flex-direction:column; gap:8px; margin:14px 0; }
+
+  .digital-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; background:var(--panel-alt); padding:12px; border:1px solid var(--border); border-radius:3px; margin-bottom:12px;}
+  .digital-grid > div{ display:flex; flex-direction:column; }
+  .digital-grid span{ font-size:9px; font-weight:800; color:var(--text-dim); letter-spacing:0.5px; margin-bottom:3px;}
+
+  input[type="number"]{
+    width:100%; padding:10px; border-radius:3px; border:2px solid var(--border); font-size:16px; font-weight:700;
+    font-family:var(--mono); background:#0d0f13; color:var(--accent); outline:none;
+  }
+  input[readonly]{ background:#101318; color:#c9cfd8; border-color:var(--border); }
+
+  .total-card{
+    background:#0d1f16; padding:16px; border-radius:4px; border:2px solid var(--success); text-align:center;
+  }
+  .total-card .tag{ color:#7fe3a3; }
+  #resBank{ color:var(--success); font-size:28px; font-weight:900; display:block; font-family:var(--mono); margin-top:4px;}
+
+  .btn-confirm{ background:var(--success); color:#0d1f16; border:2px solid #1c8f4f; padding:14px; width:100%; border-radius:3px; font-weight:900; font-size:14px; margin-top:10px; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px;}
+  .btn-cancel{ background:#2a1414; color:var(--danger); border:2px solid #5c2323; padding:11px; width:100%; border-radius:3px; font-weight:800; margin-top:8px; cursor:pointer; text-transform:uppercase; font-size:12px; letter-spacing:0.5px;}
+  .btn-confirm:active,.btn-cancel:active{ transform:translate(1px,1px); }
+
+  .settings-row{ display:flex; gap:8px; margin-top:8px; }
+  .btn-mini{
+    flex:1; background:var(--panel-alt); color:var(--text-dim); border:1px solid var(--border); padding:8px 4px;
+    border-radius:3px; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; cursor:pointer; text-align:center;
+  }
+  .btn-mini:active{ color:var(--accent); border-color:var(--accent-dim); }
+
+  .history-card{ margin-top:16px; width:100%; max-width:440px; background:var(--panel); border:2px solid var(--border); border-radius:4px; padding:12px; margin-bottom:30px;}
+  table{ width:100%; border-collapse:collapse; font-size:11px; font-family:var(--mono); }
+  th{ text-align:left; color:var(--text-dim); padding-bottom:6px; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border);}
+  td{ padding:8px 2px; border-top:1px solid var(--border); color:var(--text);}
+  .btn-edit{ color:var(--accent); font-weight:700; cursor:pointer; margin-right:10px;}
+  .btn-del{ color:var(--danger); font-weight:700; cursor:pointer;}
+
+  .daily-summary-row{ background:#241c0a; border-top:2px solid var(--accent-dim);}
+  .daily-summary-content{ padding:10px 2px !important; font-size:10px; color:#e9c77a; line-height:1.5;}
+  .summary-title{ font-weight:900; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:4px; letter-spacing:0.5px;}
+
+  #reviewModal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:1000; align-items:center; justify-content:center; padding:15px;}
+  .modal-content{ background:var(--panel); width:100%; max-width:400px; border:2px solid var(--border); border-radius:4px; padding:18px; max-height:90vh; overflow-y:auto; box-shadow:4px 4px 0 rgba(0,0,0,0.4);}
+  .modal-header{ font-weight:900; font-size:16px; color:var(--accent); margin-bottom:14px; text-align:center; text-transform:uppercase; letter-spacing:1px;}
+
+  .progress-container{ width:100%; height:6px; background:var(--panel-alt); border:1px solid var(--border); border-radius:2px; margin:10px 0; display:none; overflow:hidden;}
+  #progressBar{ width:0%; height:100%; background:var(--accent); transition:width 0.3s ease;}
+
+  #debugWin{ display:none; background:#000; color:#3ecf3e; font-family:var(--mono); font-size:10px; padding:10px; margin-top:12px; border:1px solid var(--border); border-radius:3px; overflow:auto; white-space:pre-wrap; max-height:150px;}
+  input[type="file"], canvas{ display:none;}
+  .screen{ display:none; }
+  .screen.active{ display:block; }
+
+  input[type="date"]{
+    width:100%; padding:9px; border-radius:3px; border:2px solid var(--border); font-size:14px; font-weight:700;
+    font-family:var(--mono); background:#0d0f13; color:var(--accent); outline:none;
+  }
+  .float-row{ display:none; align-items:center; gap:8px; margin:10px 0; }
+  .float-row .section-label{ flex-shrink:0; border:none; padding:0; margin:0; white-space:nowrap; }
+  .btn-toggle{
+    flex:1; background:var(--panel-alt); border:1px solid var(--border); color:var(--text-dim); font-size:10px;
+    font-weight:800; padding:8px 4px; border-radius:3px; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px; text-align:center;
+  }
+  .btn-toggle.on{ color:var(--accent); border-color:var(--accent-dim); background:#241c0a; }
+  #printArea{ display:none; }
+  @media print{
+    body *{ visibility:hidden; }
+    #printArea, #printArea *{ visibility:visible; }
+    #printArea{ display:block; position:absolute; left:0; top:0; width:100%; color:#000; }
+  }
+</style>
 </head>
 <body>
 
-<div id="reviewModal">
-    <div class="modal-content">
-        <div class="modal-header" id="modalTitle">🔍 Review Entry</div>
-        <input type="hidden" id="editIdx" value="-1">
-        <div style="margin-bottom:15px;">
-            <label class="section-label">Total Sales (Bill Amount)</label>
-            <input type="number" id="tempTotal" step="0.01" onfocus="this.select()">
-        </div>
-        <label class="section-label">Digital Breakdown</label>
-        <div class="digital-grid">
-            <div><span style="font-size:9px; font-weight:700;">QR PAY</span><input type="number" id="temp_val_QRPAY" step="0.01" onfocus="this.select()"></div>
-            <div><span style="font-size:9px; font-weight:700;">VISA</span><input type="number" id="temp_val_VISA" step="0.01" onfocus="this.select()"></div>
-            <div><span style="font-size:9px; font-weight:700;">MASTER</span><input type="number" id="temp_val_MASTER" step="0.01" onfocus="this.select()"></div>
-            <div><span style="font-size:9px; font-weight:700;">TRANSFER</span><input type="number" id="temp_val_TRANSFER" step="0.01" onfocus="this.select()"></div>
-            <div><span style="font-size:9px; font-weight:700;">GRAB</span><input type="number" id="temp_val_GRAB" step="0.01" onfocus="this.select()"></div>
-            <div><span style="font-size:9px; font-weight:700;">IPAY88</span><input type="number" id="temp_val_IPAY" step="0.01" onfocus="this.select()"></div>
-            <div><span style="font-size:9px; font-weight:700;">VOUCHER</span><input type="number" id="temp_val_VOUCHER" step="0.01" onfocus="this.select()"></div>
-        </div>
-        <button class="btn-confirm" onclick="confirmScan()">✅ Save Entry</button>
-        <button class="btn-cancel" onclick="closeModal()">❌ Discard</button>
-    </div>
+<!-- ===== SETUP: OUTLET SELECT ===== -->
+<div id="setupOutletScreen" class="screen panel">
+  <h3 class="screen-title">Select Outlet</h3>
+  <p class="screen-sub">Each outlet keeps its own separate closing data</p>
+  <div class="grid-outlets" id="outletGrid"></div>
 </div>
 
-<div class="card">
-    <header>
-        <h2 onclick="toggleDebug()">TutupKedai</h2>
-        <span id="receiptCount" class="counter-badge">0 SCANNED</span>
-    </header>
+<!-- ===== SETUP: POS COUNT SELECT ===== -->
+<div id="setupPOSScreen" class="screen panel">
+  <h3 class="screen-title">Outlet <span id="posSetupOutletLabel" style="color:var(--text)"></span></h3>
+  <p class="screen-sub">How many POS terminals does this outlet run?</p>
+  <div class="pos-grid">
+    <div class="btn-pos" onclick="choosePOS(1)"><span class="num">1</span><span class="lbl">POS &middot; bundle 2</span></div>
+    <div class="btn-pos" onclick="choosePOS(2)"><span class="num">2</span><span class="lbl">POS &middot; bundle 4</span></div>
+    <div class="btn-pos" onclick="choosePOS(3)"><span class="num">3</span><span class="lbl">POS &middot; bundle 6</span></div>
+    <div class="btn-pos" onclick="choosePOS(4)"><span class="num">4</span><span class="lbl">POS &middot; bundle 8</span></div>
+  </div>
+  <button class="btn-mini" style="width:100%;padding:10px;" onclick="showScreen('setupOutlet')">&larr; BACK TO OUTLET LIST</button>
+</div>
 
+<!-- ===== REVIEW / MANUAL ENTRY MODAL ===== -->
+<div id="reviewModal">
+  <div class="modal-content">
+    <div class="modal-header" id="modalTitle">Review Entry</div>
+    <input type="hidden" id="editIdx" value="-1">
+    <div style="margin-bottom:15px;">
+      <label class="section-label">Entry Date</label>
+      <input type="date" id="tempDate">
+    </div>
+    <div style="margin-bottom:15px;">
+      <label class="section-label">Total Sales (Bill Amount)</label>
+      <input type="number" id="tempTotal" step="0.01" onfocus="this.select()">
+    </div>
+    <label class="section-label">Digital Breakdown</label>
+    <div class="digital-grid">
+      <div><span>QR PAY</span><input type="number" id="temp_val_QRPAY" step="0.01" onfocus="this.select()"></div>
+      <div><span>VISA</span><input type="number" id="temp_val_VISA" step="0.01" onfocus="this.select()"></div>
+      <div><span>MASTER</span><input type="number" id="temp_val_MASTER" step="0.01" onfocus="this.select()"></div>
+      <div><span>TRANSFER</span><input type="number" id="temp_val_TRANSFER" step="0.01" onfocus="this.select()"></div>
+      <div><span>GRAB</span><input type="number" id="temp_val_GRAB" step="0.01" onfocus="this.select()"></div>
+      <div><span>IPAY88</span><input type="number" id="temp_val_IPAY" step="0.01" onfocus="this.select()"></div>
+      <div><span>VOUCHER</span><input type="number" id="temp_val_VOUCHER" step="0.01" onfocus="this.select()"></div>
+    </div>
+    <button class="btn-confirm" onclick="confirmScan()">SAVE ENTRY</button>
+    <button class="btn-cancel" onclick="closeModal()">DISCARD</button>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="mainApp" style="display:none; width:100%; display:flex; flex-direction:column; align-items:center;">
+  <div class="topbar">
+    <span class="brand" onclick="toggleDebug()">TutupKedai</span>
+    <span class="tag"><span class="led ready" id="statusLed"></span><span id="outletHeaderLabel">--</span> / <span id="posHeaderLabel">--</span></span>
+  </div>
+
+  <div class="panel">
     <div class="action-area">
-        <label class="btn-snap">📷 &nbsp; SNAP RECEIPT<input type="file" accept="image/*" capture="environment" onchange="processImage(this)"></label>
-        <button class="btn-manual" onclick="openManual()">✍️ MANUAL ENTRY</button>
+      <label class="btn-snap">SNAP RECEIPT<input type="file" accept="image/*" capture="environment" onchange="processImage(this)"></label>
+      <button class="btn-manual" onclick="openManual()">MANUAL ENTRY</button>
+      <button class="btn-retry" id="retryBtn" onclick="retryLastScan()">RE-SCAN &middot; ENHANCE FOR FADED INK</button>
     </div>
 
     <div class="progress-container" id="progressWrapper"><div id="progressBar"></div></div>
-    <div id="status" style="text-align: center; margin-bottom: 10px; font-size: 14px; color: #64748b; font-weight: 600;">Ready</div>
+    <div id="status" style="text-align:center; margin-bottom:10px; font-size:12px; color:var(--text-dim); font-weight:700; font-family:var(--mono); text-transform:uppercase;">Ready</div>
     <div id="debugWin"></div>
     <canvas id="pCanvas"></canvas>
-    
+
     <div id="results">
-        <label class="section-label">Session Totals (Current List)</label>
-        <div style="margin-bottom:15px;">
-            <input type="number" id="editTotalCount" value="0.00" readonly title="Grand Total of all scanned receipts">
-        </div>
+      <label class="section-label">Session Total (Current List)</label>
+      <div style="margin-bottom:15px;">
+        <input type="number" id="editTotalCount" value="0.00" readonly title="Grand Total of all scanned receipts">
+      </div>
 
-        <label class="section-label">Digital Sales Summary</label>
-        <div class="digital-grid">
-            <div><span style="font-size:9px; font-weight:700;">QR PAY</span><input type="number" id="val_QRPAY" value="0.00" readonly></div>
-            <div><span style="font-size:9px; font-weight:700;">VISA</span><input type="number" id="val_VISA" value="0.00" readonly></div>
-            <div><span style="font-size:9px; font-weight:700;">MASTER</span><input type="number" id="val_MASTER" value="0.00" readonly></div>
-            <div><span style="font-size:9px; font-weight:700;">TRANSFER</span><input type="number" id="val_TRANSFER" value="0.00" readonly></div>
-            <div><span style="font-size:9px; font-weight:700;">GRAB</span><input type="number" id="val_GRAB" value="0.00" readonly></div>
-            <div><span style="font-size:9px; font-weight:700;">IPAY88</span><input type="number" id="val_IPAY" value="0.00" readonly></div>
-            <div><span style="font-size:9px; font-weight:700;">VOUCHER</span><input type="number" id="val_VOUCHER" value="0.00" readonly></div>
-        </div>
+      <label class="section-label">Digital Sales Summary</label>
+      <div class="digital-grid">
+        <div><span>QR PAY</span><input type="number" id="val_QRPAY" value="0.00" readonly></div>
+        <div><span>VISA</span><input type="number" id="val_VISA" value="0.00" readonly></div>
+        <div><span>MASTER</span><input type="number" id="val_MASTER" value="0.00" readonly></div>
+        <div><span>TRANSFER</span><input type="number" id="val_TRANSFER" value="0.00" readonly></div>
+        <div><span>GRAB</span><input type="number" id="val_GRAB" value="0.00" readonly></div>
+        <div><span>IPAY88</span><input type="number" id="val_IPAY" value="0.00" readonly></div>
+        <div><span>VOUCHER</span><input type="number" id="val_VOUCHER" value="0.00" readonly></div>
+      </div>
 
-        <div class="total-card">
-            <span style="font-size:14px; font-weight:800; color:var(--success);">NET BANK DEPOSIT (-FLOAT)</span>
-            <span id="resBank">RM 0.00</span>
-        </div>
+      <div class="total-card">
+        <span class="tag">NET BANK DEPOSIT (-FLOAT)</span>
+        <span id="resBank">RM 0.00</span>
+      </div>
 
-        <div style="margin-top:20px;">
-            <button class="btn-cancel" style="background:#f1f5f9; color:#64748b; width: 100%; border-radius: 12px;" onclick="confirmClear()">RESET ALL DATA</button>
-        </div>
+      <div class="float-row" id="floatRow">
+        <label class="section-label">Float/Receipt (RM)</label>
+        <input type="number" id="floatAmountInput" step="1" value="300" onchange="updateFloatAmount(this.value)">
+      </div>
+      <div class="settings-row">
+        <div class="btn-toggle" id="floatToggleBtn" onclick="toggleFloatEditable()">EDITABLE FLOAT: OFF</div>
+      </div>
+
+      <div class="settings-row">
+        <div class="btn-mini" onclick="switchOutlet()">SWITCH OUTLET</div>
+        <div class="btn-mini" onclick="changePOSCount()">CHANGE POS</div>
+      </div>
+      <div class="settings-row">
+        <div class="btn-mini" onclick="exportCSV()">EXPORT CSV</div>
+        <div class="btn-mini" onclick="exportPDF()">EXPORT PDF</div>
+      </div>
+      <div class="settings-row" id="undoRow" style="display:none;">
+        <div class="btn-mini" onclick="undoReset()">UNDO LAST RESET</div>
+      </div>
+      <div style="margin-top:8px;">
+        <button class="btn-cancel" onclick="confirmClear()">RESET THIS OUTLET'S DATA</button>
+      </div>
     </div>
-</div>
+  </div>
 
-<div class="history-card">
-    <header style="text-align: left; margin-bottom: 10px;">
-        <span style="font-weight: 800; color: #475569;">RECEIPT LOG (SUMMARY EVERY 4 SCANS)</span>
+  <div class="history-card">
+    <header style="text-align:left; margin-bottom:10px;">
+      <span class="tag" id="historyHeaderLabel">RECEIPT LOG</span>
     </header>
     <table>
-        <thead><tr><th>#</th><th>Bill Total</th><th>Digital</th><th>Action</th></tr></thead>
-        <tbody id="historyBody"></tbody>
+      <thead><tr><th>#</th><th>Date</th><th>Bill</th><th>Digital</th><th>Action</th></tr></thead>
+      <tbody id="historyBody"></tbody>
     </table>
+  </div>
 </div>
 
-<script>
-let scanHistory = JSON.parse(localStorage.getItem('tutupKedaiData')) || [];
-const digitalKeysMap = { 
-    'BANK TRANSFER': 'val_TRANSFER', 
-    'GRAB MERCHANT': 'val_GRAB', 
-    'IPAY88': 'val_IPAY', 
-    'MASTER': 'val_MASTER', 
-    'QR PAY': 'val_QRPAY', 
-    'VISA': 'val_VISA', 
-    'VOUCHER': 'val_VOUCHER' 
-};
-let worker = null;
+<div id="printArea"></div>
 
-window.onload = updateFields;
+<script>
+const allOutlets = ["AJ","B6","BB","BG","BJR","BP","CDR","CK","DG","DGD","GB","GBD","GM","HL","HQ","HQCT","JL","JLD","JTH","KB","KBKK","KBKS","KBTJ","KKR","KL","KMD","KMN","KMSK","KS","MC","MCD","MLR","MR","PC","PDM","PK","PM","PP","PPK","PSPD","PT","RJ","SLS","SMR","ST","TM","TMD","TMT","TPOH","TPT","WM"];
+
+const digitalKeysMap = {
+    'BANK TRANSFER': 'val_TRANSFER',
+    'GRAB MERCHANT': 'val_GRAB',
+    'IPAY88': 'val_IPAY',
+    'MASTER': 'val_MASTER',
+    'QR PAY': 'val_QRPAY',
+    'VISA': 'val_VISA',
+    'VOUCHER': 'val_VOUCHER'
+};
+
+let outletConfig = JSON.parse(localStorage.getItem('tk_outletConfig') || '{}');
+let currentOutlet = localStorage.getItem('tk_currentOutlet') || null;
+let pendingOutletForPOS = null;
+let scanHistory = [];
+let worker = null;
+let lastCapturedImg = null;
+
+window.onload = init;
+
+function init() {
+    renderOutletGrid();
+    if (currentOutlet && outletConfig[currentOutlet]) {
+        loadOutletData(currentOutlet);
+        showScreen('main');
+    } else if (currentOutlet && !outletConfig[currentOutlet]) {
+        pendingOutletForPOS = currentOutlet;
+        document.getElementById('posSetupOutletLabel').innerText = currentOutlet;
+        showScreen('setupPOS');
+    } else {
+        showScreen('setupOutlet');
+    }
+}
+
+function renderOutletGrid() {
+    const grid = document.getElementById('outletGrid');
+    grid.innerHTML = allOutlets.map(code =>
+        `<div class="btn-outlet${code===currentOutlet ? ' current' : ''}" onclick="chooseOutlet('${code}')">${code}</div>`
+    ).join('');
+}
+
+function chooseOutlet(code) {
+    currentOutlet = code;
+    localStorage.setItem('tk_currentOutlet', code);
+    if (outletConfig[code]) {
+        loadOutletData(code);
+        showScreen('main');
+    } else {
+        pendingOutletForPOS = code;
+        document.getElementById('posSetupOutletLabel').innerText = code;
+        showScreen('setupPOS');
+    }
+}
+
+function choosePOS(n) {
+    const code = pendingOutletForPOS || currentOutlet;
+    const existing = outletConfig[code] || {};
+    outletConfig[code] = { posCount: n, floatAmount: existing.floatAmount || 300, floatEditable: existing.floatEditable || false };
+    localStorage.setItem('tk_outletConfig', JSON.stringify(outletConfig));
+    currentOutlet = code;
+    localStorage.setItem('tk_currentOutlet', code);
+    pendingOutletForPOS = null;
+    loadOutletData(code);
+    showScreen('main');
+}
+
+function switchOutlet() {
+    renderOutletGrid();
+    showScreen('setupOutlet');
+}
+
+function changePOSCount() {
+    pendingOutletForPOS = currentOutlet;
+    document.getElementById('posSetupOutletLabel').innerText = currentOutlet;
+    showScreen('setupPOS');
+}
+
+function showScreen(name) {
+    document.getElementById('setupOutletScreen').classList.remove('active');
+    document.getElementById('setupPOSScreen').classList.remove('active');
+    document.getElementById('setupOutletScreen').style.display = 'none';
+    document.getElementById('setupPOSScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'none';
+    if (name === 'setupOutlet') { document.getElementById('setupOutletScreen').style.display = 'block'; }
+    else if (name === 'setupPOS') { document.getElementById('setupPOSScreen').style.display = 'block'; }
+    else if (name === 'main') { document.getElementById('mainApp').style.display = 'flex'; }
+}
+
+function loadOutletData(code) {
+    if (outletConfig[code] && outletConfig[code].floatAmount === undefined) {
+        outletConfig[code].floatAmount = 300;
+        outletConfig[code].floatEditable = false;
+        localStorage.setItem('tk_outletConfig', JSON.stringify(outletConfig));
+    }
+    scanHistory = JSON.parse(localStorage.getItem('tk_data_' + code) || '[]');
+    document.getElementById('outletHeaderLabel').innerText = code;
+    document.getElementById('posHeaderLabel').innerText = (outletConfig[code]?.posCount || 1) + ' POS';
+    refreshFloatUI();
+    refreshUndoUI();
+    updateFields();
+}
+
+function getBundleSize() {
+    return (outletConfig[currentOutlet]?.posCount || 1) * 2;
+}
+
+function getFloatAmount() {
+    const cfg = outletConfig[currentOutlet];
+    if (!cfg) return 300;
+    return cfg.floatEditable ? (parseFloat(cfg.floatAmount) || 300) : 300;
+}
+
+function toggleFloatEditable() {
+    const cfg = outletConfig[currentOutlet];
+    if (!cfg) return;
+    cfg.floatEditable = !cfg.floatEditable;
+    localStorage.setItem('tk_outletConfig', JSON.stringify(outletConfig));
+    refreshFloatUI();
+    updateFields();
+}
+
+function updateFloatAmount(val) {
+    const cfg = outletConfig[currentOutlet];
+    if (!cfg) return;
+    cfg.floatAmount = parseFloat(val) || 300;
+    localStorage.setItem('tk_outletConfig', JSON.stringify(outletConfig));
+    updateFields();
+}
+
+function refreshFloatUI() {
+    const cfg = outletConfig[currentOutlet] || {};
+    const btn = document.getElementById('floatToggleBtn');
+    const row = document.getElementById('floatRow');
+    const input = document.getElementById('floatAmountInput');
+    if (cfg.floatEditable) {
+        btn.innerText = 'EDITABLE FLOAT: ON';
+        btn.classList.add('on');
+        row.style.display = 'flex';
+        input.value = cfg.floatAmount || 300;
+    } else {
+        btn.innerText = 'EDITABLE FLOAT: OFF';
+        btn.classList.remove('on');
+        row.style.display = 'none';
+    }
+}
+
+function refreshUndoUI() {
+    const has = !!localStorage.getItem('tk_undo_' + currentOutlet);
+    document.getElementById('undoRow').style.display = has ? 'flex' : 'none';
+}
+
+function todayStr() {
+    return new Date().toISOString().slice(0, 10);
+}
 
 function toggleDebug() {
     const dbg = document.getElementById('debugWin');
     dbg.style.display = dbg.style.display === 'block' ? 'none' : 'block';
 }
 
+function setLed(state) {
+    const led = document.getElementById('statusLed');
+    led.className = 'led ' + state;
+}
+
 function openManual() {
     document.getElementById('editIdx').value = "-1";
-    document.getElementById('modalTitle').innerText = "✍️ Manual Entry";
+    document.getElementById('modalTitle').innerText = "Manual Entry";
+    document.getElementById('tempDate').value = todayStr();
     document.getElementById('tempTotal').value = "0.00";
     Object.values(digitalKeysMap).forEach(id => document.getElementById('temp_' + id).value = "0.00");
     document.getElementById('reviewModal').style.display = "flex";
@@ -162,39 +450,144 @@ function openManual() {
 
 async function processImage(input) {
     if (!input.files[0]) return;
-    const status = document.getElementById('status'), pWrapper = document.getElementById('progressWrapper'), pBar = document.getElementById('progressBar');
-    status.innerText = "Analyzing..."; pWrapper.style.display = "block"; pBar.style.width = "10%";
-    
+    const file = input.files[0];
     const img = new Image();
-    img.src = URL.createObjectURL(input.files[0]);
+    img.src = URL.createObjectURL(file);
     img.onload = async () => {
-        const canvas = document.getElementById('pCanvas'), ctx = canvas.getContext('2d');
-        canvas.width = 1600; canvas.height = img.height * (1600 / img.width);
-        ctx.filter = 'grayscale(1) contrast(1.8) brightness(1.1)'; 
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        if (!worker) worker = await Tesseract.createWorker('eng');
-        await worker.setParameters({ tessedit_char_whitelist: '0123456789.ABCDEFGHIJKLMNOPQRSTUVWXYZ,: ' });
-        
-        const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.8));
-        document.getElementById('debugWin').innerText = text;
-        parseAndShow(text);
-        
-        status.innerText = "Ready"; pWrapper.style.display = "none"; input.value = ""; 
+        lastCapturedImg = img;
+        await runOCR(img, 0.88);
+        input.value = "";
     };
+}
+
+function retryLastScan() {
+    if (!lastCapturedImg) return;
+    runOCR(lastCapturedImg, 0.68);
+}
+
+// --- IMAGE PREPROCESSING: upscale, auto-brighten (percentile contrast stretch), Otsu binarize ---
+// biasFactor < 1 leans the threshold lighter, catching faded/light ink strokes.
+function preprocessForOCR(img, biasFactor) {
+    const canvas = document.getElementById('pCanvas');
+    const ctx = canvas.getContext('2d');
+    const targetWidth = 2000;
+    const scale = targetWidth / img.width;
+    canvas.width = targetWidth;
+    canvas.height = Math.round(img.height * scale);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let data = imageData.data;
+    let n = canvas.width * canvas.height;
+    let gray = new Uint8ClampedArray(n);
+    for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+        gray[j] = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+    }
+
+    // Auto-brighten: clip the darkest/lightest 2% of pixels (glare hotspots, deep
+    // shadows, watermark noise) then stretch the remaining range to full 0-255.
+    // This is more robust on faded thermal receipts than a plain min/max stretch.
+    let rawHist = new Array(256).fill(0);
+    for (let j = 0; j < n; j++) rawHist[gray[j]]++;
+    let clipCount = Math.round(n * 0.02);
+    let cum = 0, loV = 0, hiV = 255;
+    for (let t = 0; t < 256; t++) { cum += rawHist[t]; if (cum >= clipCount) { loV = t; break; } }
+    cum = 0;
+    for (let t = 255; t >= 0; t--) { cum += rawHist[t]; if (cum >= clipCount) { hiV = t; break; } }
+    let range = Math.max(hiV - loV, 1);
+    for (let j = 0; j < n; j++) {
+        let v = (gray[j] - loV) * 255 / range;
+        gray[j] = v < 0 ? 0 : (v > 255 ? 255 : Math.round(v));
+    }
+
+    let hist = new Array(256).fill(0);
+    for (let j = 0; j < n; j++) hist[gray[j]]++;
+    let sum = 0; for (let t = 0; t < 256; t++) sum += t * hist[t];
+    let sumB = 0, wB = 0, maxVar = 0, threshold = 127;
+    for (let t = 0; t < 256; t++) {
+        wB += hist[t];
+        if (wB === 0) continue;
+        let wF = n - wB;
+        if (wF === 0) break;
+        sumB += t * hist[t];
+        let mB = sumB / wB, mF = (sum - sumB) / wF;
+        let vb = wB * wF * (mB - mF) * (mB - mF);
+        if (vb > maxVar) { maxVar = vb; threshold = t; }
+    }
+    let finalThreshold = threshold * biasFactor;
+    for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+        let v = gray[j] > finalThreshold ? 255 : 0;
+        data[i] = data[i+1] = data[i+2] = v;
+    }
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+}
+
+async function runOCR(img, biasFactor) {
+    const status = document.getElementById('status'), pWrapper = document.getElementById('progressWrapper'), pBar = document.getElementById('progressBar');
+    setLed('busy');
+    status.innerText = "Analyzing..."; pWrapper.style.display = "block"; pBar.style.width = "20%";
+
+    const canvas = preprocessForOCR(img, biasFactor);
+    pBar.style.width = "45%";
+
+    if (!worker) worker = await Tesseract.createWorker('eng');
+    await worker.setParameters({
+        tessedit_char_whitelist: '0123456789.,:/- ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+        tessedit_pageseg_mode: '6'
+    });
+    pBar.style.width = "70%";
+
+    const { data: { text } } = await worker.recognize(canvas.toDataURL('image/png'));
+    pBar.style.width = "100%";
+    document.getElementById('debugWin').innerText = text;
+    const results = parseReceiptText(text);
+
+    document.getElementById('retryBtn').classList.add('show');
+
+    if (results.total === 0) {
+        setLed('err');
+        status.innerText = "Low confidence - check totals";
+    } else {
+        setLed('ready');
+        status.innerText = "Ready";
+    }
+    pWrapper.style.display = "none";
+
+    document.getElementById('editIdx').value = "-1";
+    document.getElementById('modalTitle').innerText = "Review Scan";
+    document.getElementById('tempDate').value = results.date || todayStr();
+    document.getElementById('tempTotal').value = results.total.toFixed(2);
+    Object.values(digitalKeysMap).forEach(id => document.getElementById('temp_' + id).value = (results.digital[id] || 0).toFixed(2));
+    document.getElementById('reviewModal').style.display = "flex";
 }
 
 function extractAmountOnly(rawString) {
     if (!rawString) return 0;
-    const matches = rawString.match(/\d+[\.\,]\d{2}/g);
+    const matches = rawString.match(/\d[\d,]*\.\d{2}/g);
     if (!matches) return 0;
-    let amountStr = matches[matches.length - 1].replace(/[^0-9.]/g, '');
+    let amountStr = matches[matches.length - 1].replace(/,/g, '');
     return parseFloat(amountStr) || 0;
 }
 
-function parseAndShow(text) {
+function extractDateFromLines(rawLines) {
+    for (let line of rawLines) {
+        if (line.includes("DATE")) {
+            let m = line.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+            if (m) {
+                let dd = m[1].padStart(2, '0');
+                let mm = m[2].padStart(2, '0');
+                let yyyy = m[3].length === 2 ? '20' + m[3] : m[3];
+                return yyyy + '-' + mm + '-' + dd;
+            }
+        }
+    }
+    return null;
+}
+
+function parseReceiptText(text) {
     let rawLines = text.toUpperCase().split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    let results = { total: 0, digital: {} };
+    let results = { total: 0, digital: {}, date: extractDateFromLines(rawLines) };
     let inPaymentZone = false;
 
     for (let i = 0; i < rawLines.length; i++) {
@@ -207,27 +600,23 @@ function parseAndShow(text) {
         }
         if (line.includes("TOTAL") && line.includes("COUNT")) {
             results.total = extractAmountOnly(line + " " + (rawLines[i+1] || ""));
-            inPaymentZone = false; break; 
+            inPaymentZone = false; break;
         }
     }
-
-    document.getElementById('editIdx').value = "-1";
-    document.getElementById('modalTitle').innerText = "🔍 Review Scan";
-    document.getElementById('tempTotal').value = results.total.toFixed(2);
-    Object.values(digitalKeysMap).forEach(id => document.getElementById('temp_' + id).value = (results.digital[id] || 0).toFixed(2));
-    document.getElementById('reviewModal').style.display = "flex";
+    return results;
 }
 
 function confirmScan() {
     const idx = parseInt(document.getElementById('editIdx').value);
     const data = {
+        date: document.getElementById('tempDate').value || todayStr(),
         totalCount: parseFloat(document.getElementById('tempTotal').value) || 0,
         digital: {}
     };
     Object.values(digitalKeysMap).forEach(id => {
         data.digital[id] = parseFloat(document.getElementById('temp_' + id).value) || 0;
     });
-    
+
     if (idx === -1) scanHistory.push(data);
     else scanHistory[idx] = data;
 
@@ -238,7 +627,8 @@ function confirmScan() {
 function editReceipt(idx) {
     const s = scanHistory[idx];
     document.getElementById('editIdx').value = idx;
-    document.getElementById('modalTitle').innerText = "✏️ Edit Receipt #" + (idx + 1);
+    document.getElementById('modalTitle').innerText = "Edit Receipt #" + (idx + 1);
+    document.getElementById('tempDate').value = s.date || todayStr();
     document.getElementById('tempTotal').value = s.totalCount.toFixed(2);
     Object.values(digitalKeysMap).forEach(id => {
         document.getElementById('temp_' + id).value = (s.digital[id] || 0).toFixed(2);
@@ -247,25 +637,26 @@ function editReceipt(idx) {
 }
 
 function deleteReceipt(idx) {
-    if(confirm("Delete this receipt entry?")) {
+    if (confirm("Delete this receipt entry?")) {
         scanHistory.splice(idx, 1);
         saveAndRefresh();
     }
 }
 
-function saveAndRefresh() { 
-    localStorage.setItem('tutupKedaiData', JSON.stringify(scanHistory)); 
-    updateFields(); 
+function saveAndRefresh() {
+    localStorage.setItem('tk_data_' + currentOutlet, JSON.stringify(scanHistory));
+    updateFields();
 }
 
 function updateFields() {
+    const bundleSize = getBundleSize();
+    document.getElementById('historyHeaderLabel').innerText = 'RECEIPT LOG (SUMMARY EVERY ' + bundleSize + ' SCANS)';
+
     let tTotalAccumulated = 0;
     let categoryTotalsAccumulated = {};
     Object.values(digitalKeysMap).forEach(id => categoryTotalsAccumulated[id] = 0);
-    
+
     let html = "";
-    
-    // Grouping variables
     let dayTotalSales = 0;
     let dayDigitalSales = {};
     Object.values(digitalKeysMap).forEach(id => dayDigitalSales[id] = 0);
@@ -273,8 +664,6 @@ function updateFields() {
     scanHistory.forEach((s, i) => {
         tTotalAccumulated += s.totalCount;
         let receiptDigitalSum = 0;
-        
-        // Add to daily group
         dayTotalSales += s.totalCount;
 
         Object.keys(s.digital).forEach(cat => {
@@ -283,55 +672,130 @@ function updateFields() {
             dayDigitalSales[cat] += val;
             receiptDigitalSum += val;
         });
-        
-        // Row for individual receipt
-        html += `<tr><td>${i+1}</td><td>${s.totalCount.toFixed(2)}</td><td>${receiptDigitalSum.toFixed(2)}</td>
+
+        html += `<tr><td>${i+1}</td><td>${s.date||'-'}</td><td>${s.totalCount.toFixed(2)}</td><td>${receiptDigitalSum.toFixed(2)}</td>
                  <td><span class="btn-edit" onclick="editReceipt(${i})">Edit</span>
                  <span class="btn-del" onclick="deleteReceipt(${i})">Del</span></td></tr>`;
 
-        // Check if we hit 4 receipts (Daily marker)
-        if ((i + 1) % 4 === 0) {
+        if ((i + 1) % bundleSize === 0) {
             let totalDayDigital = Object.values(dayDigitalSales).reduce((a, b) => a + b, 0);
-            let dayFloat = 1200; // RM300 x 4 sessions
+            let dayFloat = bundleSize * getFloatAmount();
             let dayCash = dayTotalSales - totalDayDigital - dayFloat;
-            
+
             let digitalBreakdownString = Object.entries(dayDigitalSales)
                 .filter(([_, val]) => val > 0)
                 .map(([id, val]) => `${id.replace('val_','').replace('QRPAY','QR')}: ${val.toFixed(2)}`)
                 .join(" | ");
 
+            let startNum = i - bundleSize + 2;
             html += `<tr class="daily-summary-row">
                         <td colspan="4" class="daily-summary-content">
-                            <span class="summary-title">🗓️ Daily Summary (Receipts ${(i-2)}-${i+1})</span>
-                            <strong>Total Sales:</strong> RM ${dayTotalSales.toFixed(2)}<br>
-                            <strong>Total Cash (Net):</strong> RM ${dayCash.toFixed(2)} (after RM1,200 float)<br>
-                            <strong>Digital Total:</strong> RM ${totalDayDigital.toFixed(2)}<br>
-                            <small>${digitalBreakdownString || 'No Digital Sales'}</small>
+                            <span class="summary-title">Daily Summary (Receipts ${startNum}-${i+1})</span>
+                            Total Sales: RM ${dayTotalSales.toFixed(2)}<br>
+                            Total Cash (Net): RM ${dayCash.toFixed(2)} (after RM${dayFloat.toFixed(2)} float)<br>
+                            Digital Total: RM ${totalDayDigital.toFixed(2)}<br>
+                            <span style="color:var(--text-dim);">${digitalBreakdownString || 'No Digital Sales'}</span>
                         </td>
                      </tr>`;
-            
-            // Reset daily counters for next block
+
             dayTotalSales = 0;
             Object.values(digitalKeysMap).forEach(id => dayDigitalSales[id] = 0);
         }
     });
-    
-    // Update Global Summary at Top
+
     document.getElementById('historyBody').innerHTML = html;
     document.getElementById('editTotalCount').value = tTotalAccumulated.toFixed(2);
     Object.entries(categoryTotalsAccumulated).forEach(([id, val]) => {
         document.getElementById(id).value = val.toFixed(2);
     });
 
-    document.getElementById('receiptCount').innerText = scanHistory.length + " SCANNED";
-    
     const totalDigiGlobal = Object.values(categoryTotalsAccumulated).reduce((a, b) => a + b, 0);
-    const floatGlobal = scanHistory.length * 300;
+    const floatGlobal = scanHistory.length * getFloatAmount();
     document.getElementById('resBank').innerText = "RM " + (tTotalAccumulated - totalDigiGlobal - floatGlobal).toFixed(2);
 }
 
 function closeModal() { document.getElementById('reviewModal').style.display = "none"; }
-function confirmClear() { if(confirm("Reset all data? This cannot be undone.")) { scanHistory = []; localStorage.clear(); location.reload(); } }
+
+function confirmClear() {
+    if (confirm("Reset all data for outlet " + currentOutlet + "? You can undo this once from the settings area.")) {
+        localStorage.setItem('tk_undo_' + currentOutlet, JSON.stringify({ data: scanHistory, ts: Date.now() }));
+        scanHistory = [];
+        localStorage.removeItem('tk_data_' + currentOutlet);
+        document.getElementById('retryBtn').classList.remove('show');
+        lastCapturedImg = null;
+        updateFields();
+        refreshUndoUI();
+    }
+}
+
+function undoReset() {
+    const snap = JSON.parse(localStorage.getItem('tk_undo_' + currentOutlet) || 'null');
+    if (!snap) return;
+    scanHistory = snap.data;
+    localStorage.setItem('tk_data_' + currentOutlet, JSON.stringify(scanHistory));
+    localStorage.removeItem('tk_undo_' + currentOutlet);
+    updateFields();
+    refreshUndoUI();
+}
+
+function downloadBlob(blob, fileName) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function exportCSV() {
+    const catIds = Object.values(digitalKeysMap);
+    let rows = [['#', 'Date', 'Bill Total', 'Digital Total', ...catIds.map(id => id.replace('val_', ''))]];
+    scanHistory.forEach((s, i) => {
+        let digiSum = Object.values(s.digital).reduce((a, b) => a + b, 0);
+        let row = [i + 1, s.date || '', s.totalCount.toFixed(2), digiSum.toFixed(2)];
+        catIds.forEach(id => row.push((s.digital[id] || 0).toFixed(2)));
+        rows.push(row);
+    });
+    const csvContent = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const fileName = 'TutupKedai_' + currentOutlet + '_' + todayStr() + '.csv';
+
+    if (navigator.canShare) {
+        const file = new File([blob], fileName, { type: 'text/csv' });
+        if (navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], title: fileName }).catch(() => downloadBlob(blob, fileName));
+            return;
+        }
+    }
+    downloadBlob(blob, fileName);
+}
+
+function exportPDF() {
+    const catIds = Object.values(digitalKeysMap);
+    let rowsHtml = '';
+    scanHistory.forEach((s, i) => {
+        let digiSum = Object.values(s.digital).reduce((a, b) => a + b, 0);
+        rowsHtml += `<tr><td>${i+1}</td><td>${s.date||'-'}</td><td>${s.totalCount.toFixed(2)}</td><td>${digiSum.toFixed(2)}</td></tr>`;
+    });
+    const totalDigi = catIds.reduce((sum, id) => sum + scanHistory.reduce((a, s) => a + (s.digital[id] || 0), 0), 0);
+    const grandTotal = scanHistory.reduce((a, s) => a + s.totalCount, 0);
+    const netBank = grandTotal - totalDigi - (scanHistory.length * getFloatAmount());
+
+    document.getElementById('printArea').innerHTML = `
+        <h2>TutupKedai - Outlet ${currentOutlet}</h2>
+        <p>Generated: ${todayStr()} &middot; POS terminals: ${outletConfig[currentOutlet]?.posCount || 1} &middot; Closing bundle: ${getBundleSize()}</p>
+        <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:12px;">
+          <thead><tr><th>#</th><th>Date</th><th>Bill Total (RM)</th><th>Digital (RM)</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <p style="margin-top:14px;">
+          <strong>Grand Total:</strong> RM ${grandTotal.toFixed(2)}<br>
+          <strong>Digital Total:</strong> RM ${totalDigi.toFixed(2)}<br>
+          <strong>Float Deducted:</strong> RM ${(scanHistory.length * getFloatAmount()).toFixed(2)}<br>
+          <strong>Net Bank Deposit:</strong> RM ${netBank.toFixed(2)}
+        </p>
+    `;
+    window.print();
+}
 </script>
 </body>
 </html>
