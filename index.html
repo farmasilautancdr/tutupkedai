@@ -193,6 +193,19 @@
   </div>
 </div>
 
+<!-- ===== CROP MODAL ===== -->
+<div id="cropModal" style="display:none; position:fixed; inset:0; background:#000; z-index:2000; flex-direction:column;">
+  <div style="padding:12px 14px; text-align:center; color:var(--accent); font-weight:800; text-transform:uppercase; letter-spacing:1px; font-size:12px; background:var(--panel-alt); border-bottom:2px solid var(--border);">DRAG A BOX AROUND THE RECEIPT ONLY</div>
+  <div id="cropStage" style="position:relative; flex:1; overflow:hidden; touch-action:none; background:#000;">
+    <img id="cropImg" style="position:absolute; top:0; left:0; max-width:100%; max-height:100%; user-select:none; -webkit-user-drag:none; pointer-events:none;">
+    <div id="cropBox" style="position:absolute; border:2px solid var(--accent); background:rgba(255,176,32,0.15); display:none; pointer-events:none;"></div>
+  </div>
+  <div style="padding:12px; display:flex; gap:8px; background:var(--panel-alt); border-top:2px solid var(--border);">
+    <button class="btn-cancel" style="flex:1; margin-top:0;" onclick="cancelCrop()">CANCEL</button>
+    <button class="btn-confirm" style="flex:1; margin-top:0;" onclick="confirmCropAndScan()">USE THIS AREA</button>
+  </div>
+</div>
+
 <!-- ===== MAIN APP ===== -->
 <div id="mainApp" style="display:none; width:100%; display:flex; flex-direction:column; align-items:center;">
   <div class="topbar">
@@ -205,6 +218,7 @@
       <label class="btn-snap">SNAP RECEIPT<input type="file" accept="image/*" capture="environment" onchange="processImage(this)"></label>
       <button class="btn-manual" onclick="openManual()">MANUAL ENTRY</button>
       <button class="btn-retry" id="retryBtn" onclick="retryLastScan()">RE-SCAN &middot; ENHANCE FOR FADED INK</button>
+      <button class="btn-retry" id="recropBtn" onclick="reopenCropForLastImage()">ADJUST CROP &amp; RE-SCAN</button>
     </div>
 
     <div class="progress-container" id="progressWrapper"><div id="progressBar"></div></div>
@@ -467,16 +481,105 @@ function openManual() {
     document.getElementById('reviewModal').style.display = "flex";
 }
 
-async function processImage(input) {
+let cropStageState = { startX: 0, startY: 0, dragging: false };
+let lastCropRect = null; // {x0,y0,x1,y1} in the ORIGINAL photo's pixel coordinates
+
+function processImage(input) {
     if (!input.files[0]) return;
     const file = input.files[0];
     const img = new Image();
-    img.src = URL.createObjectURL(file);
-    img.onload = async () => {
+    img.onload = () => {
         lastCapturedImg = img;
-        await runOCR(img, 'binarized', 0.88);
-        input.value = "";
+        lastCropRect = null;
+        openCropModal(img);
     };
+    img.src = URL.createObjectURL(file);
+    input.value = "";
+}
+
+function reopenCropForLastImage() {
+    if (!lastCapturedImg) return;
+    openCropModal(lastCapturedImg);
+}
+
+function openCropModal(img) {
+    const cropImg = document.getElementById('cropImg');
+    const box = document.getElementById('cropBox');
+    box.style.display = 'none';
+    cropImg.src = img.src;
+    document.getElementById('cropModal').style.display = 'flex';
+    setupCropEventsOnce();
+}
+
+let cropEventsBound = false;
+function setupCropEventsOnce() {
+    if (cropEventsBound) return;
+    cropEventsBound = true;
+    const stage = document.getElementById('cropStage');
+    const box = document.getElementById('cropBox');
+
+    stage.addEventListener('pointerdown', (e) => {
+        const rect = stage.getBoundingClientRect();
+        cropStageState.startX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+        cropStageState.startY = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+        cropStageState.dragging = true;
+        box.style.display = 'block';
+        box.style.left = cropStageState.startX + 'px';
+        box.style.top = cropStageState.startY + 'px';
+        box.style.width = '0px';
+        box.style.height = '0px';
+        stage.setPointerCapture(e.pointerId);
+    });
+    stage.addEventListener('pointermove', (e) => {
+        if (!cropStageState.dragging) return;
+        const rect = stage.getBoundingClientRect();
+        const curX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+        const curY = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+        const x = Math.min(cropStageState.startX, curX);
+        const y = Math.min(cropStageState.startY, curY);
+        const w = Math.abs(curX - cropStageState.startX);
+        const h = Math.abs(curY - cropStageState.startY);
+        box.style.left = x + 'px';
+        box.style.top = y + 'px';
+        box.style.width = w + 'px';
+        box.style.height = h + 'px';
+    });
+    stage.addEventListener('pointerup', () => { cropStageState.dragging = false; });
+    stage.addEventListener('pointercancel', () => { cropStageState.dragging = false; });
+}
+
+function cancelCrop() {
+    document.getElementById('cropModal').style.display = 'none';
+}
+
+function confirmCropAndScan() {
+    const box = document.getElementById('cropBox');
+    const cropImg = document.getElementById('cropImg');
+    const boxW = parseFloat(box.style.width) || 0;
+    const boxH = parseFloat(box.style.height) || 0;
+
+    if (boxW < 20 || boxH < 20 || box.style.display === 'none') {
+        // No meaningful box drawn - use the whole photo as-is.
+        lastCropRect = { x0: 0, y0: 0, x1: lastCapturedImg.width, y1: lastCapturedImg.height };
+    } else {
+        const displayedRect = cropImg.getBoundingClientRect();
+        const stageRect = document.getElementById('cropStage').getBoundingClientRect();
+        const imgOffsetLeft = displayedRect.left - stageRect.left;
+        const imgOffsetTop = displayedRect.top - stageRect.top;
+        const scaleX = lastCapturedImg.width / displayedRect.width;
+        const scaleY = lastCapturedImg.height / displayedRect.height;
+        const boxLeft = parseFloat(box.style.left);
+        const boxTop = parseFloat(box.style.top);
+
+        lastCropRect = {
+            x0: Math.max(0, (boxLeft - imgOffsetLeft) * scaleX),
+            y0: Math.max(0, (boxTop - imgOffsetTop) * scaleY),
+            x1: Math.min(lastCapturedImg.width, (boxLeft - imgOffsetLeft + boxW) * scaleX),
+            y1: Math.min(lastCapturedImg.height, (boxTop - imgOffsetTop + boxH) * scaleY)
+        };
+    }
+    document.getElementById('cropModal').style.display = 'none';
+    runOCR(lastCapturedImg, 'binarized', 0.88);
 }
 
 function retryLastScan() {
@@ -484,53 +587,6 @@ function retryLastScan() {
     runOCR(lastCapturedImg, 'binarized', 0.65);
 }
 
-// --- AUTO-CROP: find the receipt paper within the photo by looking for a large,
-// low-saturation (white/gray), reasonably bright region, and ignore the rest
-// (notebook covers, desks, glare edges, etc). Falls back to the full photo if
-// no confident paper region is found.
-function autoCropToPaper(img) {
-    const tmp = document.createElement('canvas');
-    const tctx = tmp.getContext('2d');
-    const analysisWidth = Math.min(img.width, 700);
-    const scale = analysisWidth / img.width;
-    tmp.width = analysisWidth;
-    tmp.height = Math.round(img.height * scale);
-    tctx.drawImage(img, 0, 0, tmp.width, tmp.height);
-    const id = tctx.getImageData(0, 0, tmp.width, tmp.height);
-    const d = id.data;
-    const w = tmp.width, h = tmp.height;
-    const colCount = new Float64Array(w);
-    const rowCount = new Float64Array(h);
-
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            const idx = (y * w + x) * 4;
-            const r = d[idx], g = d[idx+1], b = d[idx+2];
-            const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-            const sat = mx > 0 ? (mx - mn) / mx : 0;
-            if (sat < 0.18 && mx > 80) { colCount[x]++; rowCount[y]++; }
-        }
-    }
-
-    let x0 = -1, x1 = -1, y0 = -1, y1 = -1;
-    for (let x = 0; x < w; x++) {
-        if (colCount[x] / h > 0.5) { if (x0 === -1) x0 = x; x1 = x; }
-    }
-    for (let y = 0; y < h; y++) {
-        if (rowCount[y] / w > 0.5) { if (y0 === -1) y0 = y; y1 = y; }
-    }
-
-    if (x0 === -1 || y0 === -1 || (x1 - x0) < w * 0.15 || (y1 - y0) < h * 0.15) {
-        return { x0: 0, y0: 0, x1: img.width, y1: img.height };
-    }
-    const pad = 0.015 * img.width;
-    return {
-        x0: Math.max(0, x0 / scale - pad),
-        y0: Math.max(0, y0 / scale - pad),
-        x1: Math.min(img.width, x1 / scale + pad),
-        y1: Math.min(img.height, y1 / scale + pad)
-    };
-}
 
 // Gentle levels stretch that keeps color (clips the extreme 1% darkest/lightest
 // pixels and stretches the rest) - used for the primary, non-destructive scan.
@@ -563,7 +619,7 @@ function applyGentleColorStretch(data, n) {
 //   Used for the manual "RE-SCAN / ENHANCE" retry on genuinely faded receipts.
 // biasFactor < 1 leans the binarize threshold lighter, catching faded/light ink.
 function preprocessForOCR(img, mode, biasFactor) {
-    const crop = autoCropToPaper(img);
+    const crop = lastCropRect || { x0: 0, y0: 0, x1: img.width, y1: img.height };
     const cropW = crop.x1 - crop.x0, cropH = crop.y1 - crop.y0;
     const canvas = document.getElementById('pCanvas');
     const ctx = canvas.getContext('2d');
@@ -645,6 +701,7 @@ async function runOCR(img, mode, biasFactor) {
     const results = parseReceiptText(text);
 
     document.getElementById('retryBtn').classList.add('show');
+    document.getElementById('recropBtn').classList.add('show');
 
     if (results.total === 0) {
         setLed('err');
@@ -833,6 +890,7 @@ function confirmClear() {
         scanHistory = [];
         localStorage.removeItem('tk_data_' + currentOutlet);
         document.getElementById('retryBtn').classList.remove('show');
+        document.getElementById('recropBtn').classList.remove('show');
         lastCapturedImg = null;
         updateFields();
         refreshUndoUI();
