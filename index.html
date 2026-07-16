@@ -757,28 +757,35 @@ function parseReceiptText(text) {
     let rawLines = text.toUpperCase().split('\n').map(l => l.trim()).filter(l => l.length > 0);
     let results = { total: 0, digital: {} };
     let inPaymentZone = false;
+    let matchedCategories = 0;
 
     for (let i = 0; i < rawLines.length; i++) {
         let line = rawLines[i];
         if (line.includes("BANK TRANSFER") || line.includes("BANKTRANSFER")) inPaymentZone = true;
+
+        let isCategoryLine = false;
         if (inPaymentZone) {
             for (let [id, patterns] of Object.entries(digitalKeysMap)) {
-                if (patterns.some(p => line.includes(p))) results.digital[id] = extractAmountOnly(line);
+                if (patterns.some(p => line.includes(p))) {
+                    results.digital[id] = extractAmountOnly(line);
+                    isCategoryLine = true;
+                    matchedCategories++;
+                }
             }
         }
-        // "TOTAL COUNT" is sometimes garbled by OCR (faded print), so a line
-        // containing just "COUNT" alongside a decimal amount is accepted too,
-        // and so is the heavily-compressed "T C : 1234.56" form seen when the
-        // watermark wipes out most of both words but leaves the initials -
-        // searched anywhere in the line since stray punctuation (".", "-")
-        // often surrounds it depending on how badly that spot faded.
-        let looksLikeTotalCount = (line.includes("TOTAL") && line.includes("COUNT"))
-            || (line.includes("COUNT") && /\d[\d,.]*[.,]\d{2}/.test(line + (rawLines[i+1] || "")))
-            || /T\s*C\s*[:\-]?\s*\d[\d,.]*[.,]\d{2}/.test(line);
-        if (looksLikeTotalCount) {
-            let ownLineAmount = extractAmountOnly(line);
-            results.total = ownLineAmount !== 0 ? ownLineAmount : extractAmountOnly(line + " " + (rawLines[i+1] || ""));
-            inPaymentZone = false; break;
+
+        // The "Total Count" label gets mangled differently almost every scan
+        // (watermark placement varies), so matching its text isn't reliable.
+        // Instead: once most of the 7 known categories have been matched,
+        // the next line that (a) isn't itself a category and (b) has a real
+        // amount on it is treated as the total, regardless of its label text.
+        if (inPaymentZone && !isCategoryLine && matchedCategories >= 5) {
+            let amt = extractAmountOnly(line);
+            if (amt > 0) {
+                results.total = amt;
+                inPaymentZone = false;
+                break;
+            }
         }
     }
     return results;
