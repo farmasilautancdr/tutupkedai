@@ -188,7 +188,7 @@
   <h3 class="screen-title">Select Outlet</h3>
   <p class="screen-sub">Each outlet keeps its own separate closing data</p>
   <div class="grid-outlets" id="outletGrid"></div>
-  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.4</p>
+  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.5</p>
 </div>
 
 <!-- ===== SETUP: POS COUNT SELECT ===== -->
@@ -249,9 +249,10 @@
 <!-- ===== MAIN APP ===== -->
 <div id="mainApp" style="display:none; width:100%; display:flex; flex-direction:column; align-items:center;">
   <div class="topbar">
-    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.4</span></span>
+    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.5</span></span>
     <div style="display:flex; align-items:center; gap:8px;">
       <span class="tag"><span class="led ready" id="statusLed"></span><span id="outletHeaderLabel">--</span> / <span id="posHeaderLabel">--</span></span>
+      <span class="tag" id="syncTag" title="Google Drive sync status"></span>
       <button id="themeToggleBtn" onclick="toggleTheme()" style="background:var(--panel); border:1px solid var(--border); color:var(--text-dim); font-size:13px; padding:5px 9px; border-radius:3px; cursor:pointer; line-height:1;">&#9789;</button>
     </div>
   </div>
@@ -360,6 +361,50 @@ let scanHistory = [];
 let worker = null;
 let lastCapturedImg = null;
 
+// ===== Google Drive sync (source of truth; localStorage is the offline cache) =====
+const API_BASE = 'api/outlet';
+
+function setSyncTag(state) {
+    const el = document.getElementById('syncTag');
+    if (!el) return;
+    if (state === 'busy') { el.innerText = '☁ SYNCING'; el.style.color = 'var(--text-dim)'; }
+    else if (state === 'ok') { el.innerText = '☁ SYNCED'; el.style.color = 'var(--success)'; }
+    else { el.innerText = '☁ OFFLINE'; el.style.color = 'var(--danger)'; }
+}
+
+async function fetchOutletFromDrive(code) {
+    setSyncTag('busy');
+    try {
+        const res = await fetch(API_BASE + '?code=' + encodeURIComponent(code));
+        if (!res.ok) throw new Error('fetch failed: ' + res.status);
+        const remote = await res.json();
+        setSyncTag('ok');
+        return remote;
+    } catch (e) {
+        console.warn('Drive fetch failed, using local cache:', e);
+        setSyncTag('err');
+        return null;
+    }
+}
+
+async function syncOutletToDrive(code) {
+    if (!code) return;
+    setSyncTag('busy');
+    try {
+        const hist = (code === currentOutlet) ? scanHistory : JSON.parse(localStorage.getItem('tk_data_' + code) || '[]');
+        const res = await fetch(API_BASE + '?code=' + encodeURIComponent(code), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config: outletConfig[code] || null, scanHistory: hist })
+        });
+        if (!res.ok) throw new Error('push failed: ' + res.status);
+        setSyncTag('ok');
+    } catch (e) {
+        console.warn('Drive sync failed, changes stay local-only for now:', e);
+        setSyncTag('err');
+    }
+}
+
 window.onload = init;
 
 function init() {
@@ -383,9 +428,18 @@ function renderOutletGrid() {
     ).join('');
 }
 
-function chooseOutlet(code) {
+async function chooseOutlet(code) {
     currentOutlet = code;
     localStorage.setItem('tk_currentOutlet', code);
+    if (!outletConfig[code]) {
+        // Another terminal may have already set this outlet up in Drive.
+        const remote = await fetchOutletFromDrive(code);
+        if (remote && remote.config) {
+            outletConfig[code] = remote.config;
+            localStorage.setItem('tk_outletConfig', JSON.stringify(outletConfig));
+            localStorage.setItem('tk_data_' + code, JSON.stringify(remote.scanHistory || []));
+        }
+    }
     if (outletConfig[code]) {
         loadOutletData(code);
         showScreen('main');
@@ -406,6 +460,7 @@ function choosePOS(n) {
     pendingOutletForPOS = null;
     loadOutletData(code);
     showScreen('main');
+    syncOutletToDrive(code);
 }
 
 function switchOutlet() {
@@ -443,6 +498,19 @@ function loadOutletData(code) {
     refreshUndoUI();
     refreshSessionDateUI();
     updateFields();
+
+    fetchOutletFromDrive(code).then(remote => {
+        if (!remote || code !== currentOutlet) return; // stale response or user navigated away
+        if (remote.config) {
+            outletConfig[code] = remote.config;
+            localStorage.setItem('tk_outletConfig', JSON.stringify(outletConfig));
+        }
+        scanHistory = remote.scanHistory || [];
+        localStorage.setItem('tk_data_' + code, JSON.stringify(scanHistory));
+        document.getElementById('posHeaderLabel').innerText = (outletConfig[code]?.posCount || 1) + ' POS';
+        refreshFloatUI();
+        updateFields();
+    });
 }
 
 function getSessionDate() {
@@ -474,6 +542,7 @@ function toggleFloatEditable() {
     localStorage.setItem('tk_outletConfig', JSON.stringify(outletConfig));
     refreshFloatUI();
     updateFields();
+    syncOutletToDrive(currentOutlet);
 }
 
 function updateFloatAmount(val) {
@@ -482,6 +551,7 @@ function updateFloatAmount(val) {
     cfg.floatAmount = parseFloat(val) || 300;
     localStorage.setItem('tk_outletConfig', JSON.stringify(outletConfig));
     updateFields();
+    syncOutletToDrive(currentOutlet);
 }
 
 function refreshFloatUI() {
@@ -964,6 +1034,7 @@ function deleteReceipt(idx) {
 function saveAndRefresh() {
     localStorage.setItem('tk_data_' + currentOutlet, JSON.stringify(scanHistory));
     updateFields();
+    syncOutletToDrive(currentOutlet);
 }
 
 function updateFields() {
@@ -1044,6 +1115,7 @@ function confirmClear() {
         lastCapturedImg = null;
         updateFields();
         refreshUndoUI();
+        syncOutletToDrive(currentOutlet);
     }
 }
 
@@ -1055,6 +1127,7 @@ function undoReset() {
     localStorage.removeItem('tk_undo_' + currentOutlet);
     updateFields();
     refreshUndoUI();
+    syncOutletToDrive(currentOutlet);
 }
 
 function downloadBlob(blob, fileName) {
