@@ -191,7 +191,7 @@
   <h3 class="screen-title">Select Outlet</h3>
   <p class="screen-sub">Each outlet keeps its own separate closing data</p>
   <div class="grid-outlets" id="outletGrid"></div>
-  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.10</p>
+  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.11</p>
 </div>
 
 <!-- ===== SETUP: POS COUNT SELECT ===== -->
@@ -252,7 +252,7 @@
 <!-- ===== MAIN APP ===== -->
 <div id="mainApp" style="display:none; width:100%; display:flex; flex-direction:column; align-items:center;">
   <div class="topbar">
-    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.10</span></span>
+    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.11</span></span>
     <div style="display:flex; align-items:center; gap:8px;">
       <span class="tag"><span class="led ready" id="statusLed"></span><span id="outletHeaderLabel">--</span> / <span id="posHeaderLabel">--</span></span>
       <span class="tag" id="syncTag" title="Google Drive sync status"></span>
@@ -881,12 +881,19 @@ async function performOcrPass(img, mode, biasFactor) {
     return { text, results: parseReceiptText(text) };
 }
 
-// Prefers whichever pass actually found a non-zero value for each field,
-// favoring the base (first) pass when both agree.
+// Prefers values from whichever pass matched MORE categories overall (a
+// pass that read more of the payment block successfully is more likely
+// accurate on the individual lines too), falling back to whichever pass has
+// a non-zero value for a field the leading pass missed. Ties favor base.
+// NOTE: since the payment zone can now open on any category label (not just
+// "BANK TRANSFER"), base often succeeds well enough on its own to skip pass 2
+// entirely - this only matters on genuinely hard photos where both passes run.
 function mergeOcrResults(base, extra) {
-    let merged = { total: base.total || extra.total || 0, digital: {} };
+    const preferExtra = (extra.matchedCategories || 0) > (base.matchedCategories || 0);
+    const [leading, trailing] = preferExtra ? [extra, base] : [base, extra];
+    let merged = { total: leading.total || trailing.total || 0, digital: {} };
     digitalCategoryIds.forEach(id => {
-        merged.digital[id] = base.digital[id] || extra.digital[id] || 0;
+        merged.digital[id] = leading.digital[id] || trailing.digital[id] || 0;
     });
     return merged;
 }
@@ -996,7 +1003,15 @@ function parseReceiptText(text) {
 
     for (let i = 0; i < rawLines.length; i++) {
         let line = rawLines[i];
-        if (line.includes("BANK TRANSFER") || line.includes("BANKTRANSFER")) inPaymentZone = true;
+        // Opens on ANY known category label, not just "BANK TRANSFER" - that
+        // one specific line sits right at the fold/watermark and has proven
+        // to be the hardest to OCR cleanly across real scans. Gating the
+        // whole zone on it meant a single bad read of that one line discarded
+        // an otherwise perfectly legible category block. Whichever category
+        // happens to read cleanly first now opens the zone instead.
+        if (!inPaymentZone && Object.values(digitalKeysMap).some(patterns => patterns.some(p => line.includes(p)))) {
+            inPaymentZone = true;
+        }
 
         let isCategoryLine = false;
         if (inPaymentZone) {
