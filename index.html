@@ -118,6 +118,11 @@
     font-family:var(--mono); background:var(--input-bg); color:var(--accent); outline:none; font-variant-numeric:tabular-nums;
   }
   input[readonly]{ background:var(--input-readonly-bg); color:var(--input-readonly-text); border-color:var(--border); }
+  /* Flags a field where the binarized and color OCR passes both read an amount
+     but disagreed on the digits - neither pass is reliably more accurate than
+     the other, so this asks staff to check the paper receipt instead of the
+     app silently guessing which pass was right. */
+  input.field-uncertain{ border-color:var(--danger-border); box-shadow:0 0 0 1px var(--danger-border); }
 
   .total-card{
     background:var(--success-bg); padding:16px; border-radius:12px; border:1px solid var(--success); text-align:center;
@@ -191,7 +196,7 @@
   <h3 class="screen-title">Select Outlet</h3>
   <p class="screen-sub">Each outlet keeps its own separate closing data</p>
   <div class="grid-outlets" id="outletGrid"></div>
-  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.11</p>
+  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.16</p>
 </div>
 
 <!-- ===== SETUP: POS COUNT SELECT ===== -->
@@ -221,6 +226,7 @@
       <input type="number" id="tempTotal" step="0.01" inputmode="decimal" onfocus="this.select()">
     </div>
     <label class="section-label">Digital Breakdown</label>
+    <p id="ocrUncertainHint" style="display:none; color:var(--danger); font-size:12px; font-weight:600; margin:-6px 0 8px;">Fields outlined in red: two OCR readings disagreed - check the receipt before saving.</p>
     <div class="digital-grid">
       <div><span>BANK TRANSFER</span><input type="number" id="temp_val_TRANSFER" step="0.01" inputmode="decimal" onfocus="this.select()"></div>
       <div><span>GRAB MERCHANT</span><input type="number" id="temp_val_GRAB" step="0.01" inputmode="decimal" onfocus="this.select()"></div>
@@ -252,7 +258,7 @@
 <!-- ===== MAIN APP ===== -->
 <div id="mainApp" style="display:none; width:100%; display:flex; flex-direction:column; align-items:center;">
   <div class="topbar">
-    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.11</span></span>
+    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.16</span></span>
     <div style="display:flex; align-items:center; gap:8px;">
       <span class="tag"><span class="led ready" id="statusLed"></span><span id="outletHeaderLabel">--</span> / <span id="posHeaderLabel">--</span></span>
       <span class="tag" id="syncTag" title="Google Drive sync status"></span>
@@ -619,12 +625,28 @@ function setLed(state) {
     led.className = 'led ' + state;
 }
 
+// Highlights review-modal fields where two OCR passes disagreed on the digits
+// (see mergeOcrResults) so staff double-check them against the paper receipt.
+// Always called (with an empty list to clear) whenever the modal is opened
+// for anything other than a fresh scan, so a flag never lingers from a
+// previous scan onto a manual entry or an unrelated edit.
+function applyUncertainFlags(uncertainList) {
+    const ids = ['tempTotal', ...digitalCategoryIds.map(id => 'temp_' + id)];
+    ids.forEach(elId => document.getElementById(elId).classList.remove('field-uncertain'));
+    (uncertainList || []).forEach(key => {
+        const el = document.getElementById(key === 'total' ? 'tempTotal' : 'temp_' + key);
+        if (el) el.classList.add('field-uncertain');
+    });
+    document.getElementById('ocrUncertainHint').style.display = (uncertainList && uncertainList.length) ? 'block' : 'none';
+}
+
 function openManual() {
     document.getElementById('editIdx').value = "-1";
     document.getElementById('modalTitle').innerText = "Manual Entry";
     document.getElementById('tempDate').value = getSessionDate();
     document.getElementById('tempTotal').value = "0.00";
     digitalCategoryIds.forEach(id => document.getElementById('temp_' + id).value = "0.00");
+    applyUncertainFlags([]);
     document.getElementById('reviewModal').style.display = "flex";
 }
 
@@ -888,13 +910,58 @@ async function performOcrPass(img, mode, biasFactor) {
 // NOTE: since the payment zone can now open on any category label (not just
 // "BANK TRANSFER"), base often succeeds well enough on its own to skip pass 2
 // entirely - this only matters on genuinely hard photos where both passes run.
+//
+// Category-match count is a poor tie-breaker for individual DIGITS though -
+// confirmed on a real receipt where both the binarized and color passes
+// matched all 8 categories (a tie) but disagreed on 3 of the actual amounts,
+// each pass wrong on different fields than the other. There's no reliable
+// signal here for which pass got a given field right, so instead of silently
+// picking one, any field BOTH passes matched but read DIFFERENTLY gets added
+// to `uncertain` so the review screen can flag it for a human to check
+// against the paper receipt, rather than guessing.
+//
+// Per-field lookup deliberately uses hasOwnProperty, not `a || b`: a category
+// line that genuinely reads "0.00" (the common case - most payment methods
+// are unused on most receipts) must not be treated as "missing" just because
+// 0 is falsy, or a wrong non-zero misread from the OTHER pass silently
+// overwrites a correct zero with no flag - confirmed for real, this exact
+// bug flipped BANK TRANSFER 0.00 to 70.00 and IPAY88 0.00 to 3.00 on the same
+// test receipt (the color pass picked up stray digits from watermark ink
+// under those two lines - both categories WERE matched by both passes, just
+// misread by one of them, so hasOwnProperty is true on both sides and the
+// disagreement is now correctly flagged too).
 function mergeOcrResults(base, extra) {
     const preferExtra = (extra.matchedCategories || 0) > (base.matchedCategories || 0);
     const [leading, trailing] = preferExtra ? [extra, base] : [base, extra];
-    let merged = { total: leading.total || trailing.total || 0, digital: {} };
+    let uncertain = new Set([...(base.uncertain || []), ...(extra.uncertain || [])]);
+    let merged = {
+        total: leading.total || trailing.total || 0,
+        digital: {},
+        matchedCategories: Math.max(base.matchedCategories || 0, extra.matchedCategories || 0)
+    };
     digitalCategoryIds.forEach(id => {
-        merged.digital[id] = leading.digital[id] || trailing.digital[id] || 0;
+        const bFound = base.digital.hasOwnProperty(id), eFound = extra.digital.hasOwnProperty(id);
+        if (bFound && eFound && base.digital[id] !== extra.digital[id]) uncertain.add(id);
+        const leadFound = leading.digital.hasOwnProperty(id);
+        merged.digital[id] = leadFound ? leading.digital[id] : (trailing.digital.hasOwnProperty(id) ? trailing.digital[id] : 0);
     });
+    if ((base.total || 0) > 0 && (extra.total || 0) > 0 && base.total !== extra.total) uncertain.add('total');
+    merged.uncertain = [...uncertain];
+
+    // Re-validate the merged total against the merged digital sum. Confirmed
+    // for real: the noisy low-bias auto-enhance pass can match just 1-2
+    // categories with BOTH amounts unreadable, so its own in-pass plausibility
+    // floor (matchedSum) is 0 - meaning ANY stray number near its last match
+    // clears that floor and gets accepted as ITS total. That garbage total
+    // then wins the leading||trailing fallback above whenever the actually
+    // more-confident pass correctly found no total at all (0 is falsy). A
+    // pass's total can never legitimately be less than the merged digital
+    // amounts (total sales includes digital sales), so re-checking it here
+    // against the fuller merged picture catches what each pass's own,
+    // narrower plausibility check could not.
+    const mergedDigitalSum = digitalCategoryIds.reduce((s, id) => s + (merged.digital[id] || 0), 0);
+    if (merged.total > 0 && merged.total < mergedDigitalSum) merged.total = 0;
+
     return merged;
 }
 
@@ -904,26 +971,36 @@ async function runOCR(img, mode, biasFactor, options) {
     const actionArea = document.getElementById('actionArea');
     actionArea.classList.add('processing');
     setLed('busy');
-    status.innerText = "Analyzing..."; pWrapper.style.display = "block"; pBar.style.width = "20%";
+    status.innerText = "Analyzing..."; pWrapper.style.display = "block"; pBar.style.width = "15%";
 
     try {
-        const pass1 = await performOcrPass(img, mode, biasFactor);
+        const passPrimary = await performOcrPass(img, mode, biasFactor);
+        pBar.style.width = "35%";
+        // Binarizing throws away grayscale nuance that some digit shapes need
+        // (seen for real: a faded "8" binarized to a shape Tesseract reads as
+        // "3" at every threshold tried, while the ungrayscaled color pass read
+        // it correctly) - so a color-mode pass now always runs alongside the
+        // primary pass and gets merged in, not just on a low-confidence retry,
+        // since a bad single-digit misread can otherwise still look like a
+        // fully "confident" read (all categories matched, plausible total).
+        status.innerText = "Cross-checking...";
+        const passColor = await performOcrPass(img, 'color', biasFactor);
         pBar.style.width = "55%";
-        let finalResults = pass1.results;
-        let debugText = pass1.text;
+        let finalResults = mergeOcrResults(passPrimary.results, passColor.results);
+        let debugText = passPrimary.text + "\n\n--- COLOR PASS ---\n\n" + passColor.text;
 
-        // Auto-enhance: if the first pass couldn't find a total, or matched too
-        // few of the 7 known categories (a sign of a generally weak read even
-        // when the total slipped through), automatically retry with the more
-        // aggressive faded-ink threshold before showing anything to the user -
-        // no manual tap needed for the common case.
+        // Auto-enhance: if the merged read still couldn't find a total, or
+        // matched too few of the 8 known categories (a sign of a generally
+        // weak read even when the total slipped through), automatically retry
+        // with the more aggressive faded-ink threshold before showing
+        // anything to the user - no manual tap needed for the common case.
         const weakRead = finalResults.total === 0 || (finalResults.matchedCategories || 0) < 5;
         if (weakRead && !options.skipAutoEnhance) {
             status.innerText = "Low confidence - enhancing...";
             const pass2 = await performOcrPass(img, 'binarized', 0.65);
             pBar.style.width = "85%";
-            finalResults = mergeOcrResults(pass1.results, pass2.results);
-            debugText = pass1.text + "\n\n--- AUTO-ENHANCED PASS ---\n\n" + pass2.text;
+            finalResults = mergeOcrResults(finalResults, pass2.results);
+            debugText += "\n\n--- AUTO-ENHANCED PASS ---\n\n" + pass2.text;
         }
 
         pBar.style.width = "100%";
@@ -946,6 +1023,7 @@ async function runOCR(img, mode, biasFactor, options) {
         document.getElementById('tempDate').value = getSessionDate();
         document.getElementById('tempTotal').value = finalResults.total.toFixed(2);
         digitalCategoryIds.forEach(id => document.getElementById('temp_' + id).value = (finalResults.digital[id] || 0).toFixed(2));
+        applyUncertainFlags(finalResults.uncertain);
         document.getElementById('reviewModal').style.display = "flex";
     } catch (err) {
         setLed('err');
@@ -1000,6 +1078,7 @@ function parseReceiptText(text) {
     let inPaymentZone = false;
     let matchedCategories = 0;
     let matchedSum = 0;
+    let totalSearchAttempts = 0;
 
     for (let i = 0; i < rawLines.length; i++) {
         let line = rawLines[i];
@@ -1035,10 +1114,29 @@ function parseReceiptText(text) {
         // a category and (b) has an amount >= what's summed from matched
         // categories so far (a plausibility floor standing in for the
         // unreliable label match) is treated as the total.
-        if (inPaymentZone && !isCategoryLine && matchedCategories >= 2) {
+        if (isCategoryLine) {
+            totalSearchAttempts = 0;
+        } else if (inPaymentZone && matchedCategories >= 2) {
+            // Total Count always sits directly under the payment category
+            // block on this receipt format (at most one dotted separator
+            // line between them) - confirmed for real: when that immediate
+            // total line itself fails to OCR into any number, this used to
+            // just keep scanning forward and could latch onto an unrelated
+            // number several lines further down in the Cash Out/Less/Opening
+            // breakdown (e.g. mistaking "Opening : 300.00" for the total).
+            // Capping the search to the first couple of lines after the last
+            // matched category prevents that - if nothing plausible turns up
+            // that close, the total is genuinely unresolved (stays 0, same
+            // "low confidence" fallback as any other failed read) rather than
+            // confidently showing a wrong number from a different section.
+            totalSearchAttempts++;
             let amt = extractAmountOnly(line, true);
             if (amt > 0 && amt >= matchedSum) {
                 results.total = amt;
+                inPaymentZone = false;
+                break;
+            }
+            if (totalSearchAttempts >= 2) {
                 inPaymentZone = false;
                 break;
             }
@@ -1075,6 +1173,7 @@ function editReceipt(idx) {
     digitalCategoryIds.forEach(id => {
         document.getElementById('temp_' + id).value = (s.digital[id] || 0).toFixed(2);
     });
+    applyUncertainFlags([]);
     document.getElementById('reviewModal').style.display = "flex";
 }
 
