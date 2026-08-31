@@ -32,7 +32,7 @@ I'm a self-taught "vibe coder" — no formal CS background, learned by building 
 - **OCR pipeline:** `processImage` → crop modal → `preprocessForOCR` → `runOCR` → `parseReceiptText`.
 - **Data model:** outlets keyed by a short user-chosen code; each has a configured POS terminal count + float amount (`tk_outletConfig`); each outlet's scan history lives separately under `tk_data_<code>`; per-outlet undo via `tk_undo_<code>`.
 - **UI:** hand-rolled screens toggled via `showScreen(name)`, no router/framework. Dark/light theme persisted via `tk_theme`.
-- Git repo, `master` branch, remote `origin` → `https://github.com/farmasilautancdr/tutupkedai.git`.
+- Git repo, `main` branch (tracks `origin/main`), remote `origin` → `https://github.com/farmasilautancdr/tutupkedai.git`. This local folder was originally a downloaded snapshot of that repo's `main` branch (no `.git`), so treat `origin/main` as the canonical history — don't recreate a disconnected local history again.
 - Single large `index.html`: use Grep to jump to the relevant function rather than reading the whole file.
 
 # PERSISTENT MEMORY
