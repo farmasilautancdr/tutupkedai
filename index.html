@@ -191,7 +191,7 @@
   <h3 class="screen-title">Select Outlet</h3>
   <p class="screen-sub">Each outlet keeps its own separate closing data</p>
   <div class="grid-outlets" id="outletGrid"></div>
-  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.9</p>
+  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.10</p>
 </div>
 
 <!-- ===== SETUP: POS COUNT SELECT ===== -->
@@ -252,7 +252,7 @@
 <!-- ===== MAIN APP ===== -->
 <div id="mainApp" style="display:none; width:100%; display:flex; flex-direction:column; align-items:center;">
   <div class="topbar">
-    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.9</span></span>
+    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.10</span></span>
     <div style="display:flex; align-items:center; gap:8px;">
       <span class="tag"><span class="led ready" id="statusLed"></span><span id="outletHeaderLabel">--</span> / <span id="posHeaderLabel">--</span></span>
       <span class="tag" id="syncTag" title="Google Drive sync status"></span>
@@ -960,15 +960,31 @@ async function runOCR(img, mode, biasFactor, options) {
 // the punctuation + 2-trailing-char decimal shape, so it won't start matching
 // stray letters in label text.
 const DIGIT_LOOKALIKES = { O: '0', S: '5', B: '8', I: '1', L: '1', G: '6', Z: '2' };
-function extractAmountOnly(rawString) {
+// allowBareFallback: only passed true for total-line detection (see
+// parseReceiptText below), never for category-line amounts - a category
+// line's leading count column (e.g. "MASTER 189") is a bare 3-digit run
+// too, and would get misread as an amount (1.89) if the fallback applied
+// there. The total line has no such count column to collide with.
+function extractAmountOnly(rawString, allowBareFallback) {
     if (!rawString) return 0;
     const matches = rawString.match(/[\dOSBILGZ][\dOSBILGZ,.]*[.,][\dOSBILGZ]{2}/g);
-    if (!matches) return 0;
-    let raw = matches[matches.length - 1].replace(/[OSBILGZ]/g, ch => DIGIT_LOOKALIKES[ch]);
-    let lastSepIdx = Math.max(raw.lastIndexOf('.'), raw.lastIndexOf(','));
-    let intPart = raw.slice(0, lastSepIdx).replace(/[.,]/g, '');
-    let decPart = raw.slice(lastSepIdx + 1);
-    return parseFloat(intPart + '.' + decPart) || 0;
+    if (matches) {
+        let raw = matches[matches.length - 1].replace(/[OSBILGZ]/g, ch => DIGIT_LOOKALIKES[ch]);
+        let lastSepIdx = Math.max(raw.lastIndexOf('.'), raw.lastIndexOf(','));
+        let intPart = raw.slice(0, lastSepIdx).replace(/[.,]/g, '');
+        let decPart = raw.slice(lastSepIdx + 1);
+        return parseFloat(intPart + '.' + decPart) || 0;
+    }
+    if (!allowBareFallback) return 0;
+    // Fallback: the decimal point itself sometimes gets dropped entirely on a
+    // faded print (e.g. "2,196.40" -> "219640", no "." or "," survives at
+    // all), so the punctuated match above finds nothing. A bare run of 3+
+    // digits (this receipt format always prints 2 decimals) is treated as
+    // cents-merged - last 2 digits are the decimal part.
+    const bare = rawString.match(/[\dOSBILGZ]{3,}/g);
+    if (!bare) return 0;
+    let raw = bare[bare.length - 1].replace(/[OSBILGZ]/g, ch => DIGIT_LOOKALIKES[ch]);
+    return parseFloat(raw.slice(0, -2) + '.' + raw.slice(-2)) || 0;
 }
 
 function parseReceiptText(text) {
@@ -1005,7 +1021,7 @@ function parseReceiptText(text) {
         // categories so far (a plausibility floor standing in for the
         // unreliable label match) is treated as the total.
         if (inPaymentZone && !isCategoryLine && matchedCategories >= 2) {
-            let amt = extractAmountOnly(line);
+            let amt = extractAmountOnly(line, true);
             if (amt > 0 && amt >= matchedSum) {
                 results.total = amt;
                 inPaymentZone = false;
