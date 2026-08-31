@@ -191,7 +191,7 @@
   <h3 class="screen-title">Select Outlet</h3>
   <p class="screen-sub">Each outlet keeps its own separate closing data</p>
   <div class="grid-outlets" id="outletGrid"></div>
-  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.8</p>
+  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.9</p>
 </div>
 
 <!-- ===== SETUP: POS COUNT SELECT ===== -->
@@ -252,7 +252,7 @@
 <!-- ===== MAIN APP ===== -->
 <div id="mainApp" style="display:none; width:100%; display:flex; flex-direction:column; align-items:center;">
   <div class="topbar">
-    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.8</span></span>
+    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.9</span></span>
     <div style="display:flex; align-items:center; gap:8px;">
       <span class="tag"><span class="led ready" id="statusLed"></span><span id="outletHeaderLabel">--</span> / <span id="posHeaderLabel">--</span></span>
       <span class="tag" id="syncTag" title="Google Drive sync status"></span>
@@ -508,7 +508,14 @@ function loadOutletData(code) {
             outletConfig[code] = remote.config;
             localStorage.setItem('tk_outletConfig', JSON.stringify(outletConfig));
         }
-        scanHistory = remote.scanHistory || [];
+        const remoteHistory = remote.scanHistory || [];
+        // This fetch was fired when the screen opened and may still resolve
+        // after a scan gets saved locally (slow connection, long OCR pass).
+        // A remote history shorter than what's in memory now means a local
+        // save happened in the meantime that Drive doesn't know about yet -
+        // don't clobber it with this stale read.
+        if (remoteHistory.length < scanHistory.length) return;
+        scanHistory = remoteHistory;
         localStorage.setItem('tk_data_' + code, JSON.stringify(scanHistory));
         document.getElementById('posHeaderLabel').innerText = (outletConfig[code]?.posCount || 1) + ' POS';
         refreshFloatUI();
