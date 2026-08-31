@@ -35,5 +35,14 @@ I'm a self-taught "vibe coder" — no formal CS background, learned by building 
 - Git repo, `main` branch (tracks `origin/main`), remote `origin` → `https://github.com/farmasilautancdr/tutupkedai.git`. This local folder was originally a downloaded snapshot of that repo's `main` branch (no `.git`), so treat `origin/main` as the canonical history — don't recreate a disconnected local history again.
 - Single large `index.html`: use Grep to jump to the relevant function rather than reading the whole file.
 
+# PLUGINS
+Installed at user scope (`~/.claude`), so available in every project, not just this one:
+- `frontend-design` — distinctive, intentional UI/UX design guidance instead of templated defaults.
+- `superpowers` — brainstorming, TDD, systematic debugging, code review, and planning workflows (`superpowers:*` skills).
+- `context7` — fetches current library/framework docs instead of relying on training data.
+- `playwright` — drives a real browser (click, fill, screenshot, console/network inspection) for end-to-end verification.
+- `caveman` — terse-mode hooks (extreme brevity, no filler) installed via the `JuliusBrussee/caveman` marketplace.
+- `ui-ux-pro-max` (`uipro`, npm global + `~/.claude/skills/`) — UI/UX pattern/design-token skill for generating production-grade frontend UI.
+
 # PERSISTENT MEMORY
 `MEMORY.md` in the repo root is an append-only running log: decisions, features built, bugs fixed and their cause, in-progress work, user preferences specific to this project. Read it first each session so the user never has to re-explain prior context. Append to it immediately whenever something worth remembering happens — no permission needed. Don't log what's obvious from re-reading the code; log the *why*.
