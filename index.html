@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>TutupKedai PRO - POS Multi-Terminal</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#14171c">
+<meta name="theme-color" content="#f2f6f5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TutupKedai">
@@ -15,24 +15,22 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
   :root{
-    --bg:#14171c; --panel:#1d2128; --panel-alt:#242931; --border:#3a4049; --border-lt:#565e6a;
-    --accent:#ffb020; --accent-dim:#7a5714; --success:#2ecc71; --danger:#ff4d4d; --text:#e8eaed; --text-dim:#8b93a1;
-    --input-bg:#0d0f13; --input-readonly-bg:#101318; --input-readonly-text:#c9cfd8;
-    --success-bg:#0d1f16; --success-text-soft:#7fe3a3; --success-contrast:#0d1f16; --success-border:#1c8f4f;
-    --danger-bg:#2a1414; --danger-border:#5c2323;
-    --summary-bg:#241c0a; --summary-text:#e9c77a;
-    --texture-stripe: rgba(255,255,255,0.015);
+    --bg:#f2f6f5; --panel:#ffffff; --panel-alt:#edf3f1; --border:#dbe4e1; --border-lt:#c2d0cb;
+    --accent:#0f6f66; --accent-dim:#cbe6e2; --success:#1f9d55; --danger:#dc2626; --text:#16231f; --text-dim:#5c6b66;
+    --input-bg:#ffffff; --input-readonly-bg:#edf3f1; --input-readonly-text:#3d4a45;
+    --success-bg:#e8f7ec; --success-text-soft:#15803d; --success-contrast:#ffffff; --success-border:#1f9d55;
+    --danger-bg:#fdecec; --danger-border:#dc2626;
+    --summary-bg:#e2f2ef; --summary-text:#0f5951;
     --mono:'Consolas','SFMono-Regular','Courier New',monospace;
-    --sans:'Arial Narrow',Arial,Helvetica,sans-serif;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   }
-  body.light-mode{
-    --bg:#eef0f3; --panel:#ffffff; --panel-alt:#f3f5f7; --border:#ccd2da; --border-lt:#a9b1bc;
-    --accent:#b45f06; --accent-dim:#f0dcb8; --success:#16a34a; --danger:#dc2626; --text:#1a1d23; --text-dim:#5b6472;
-    --input-bg:#ffffff; --input-readonly-bg:#f3f5f7; --input-readonly-text:#3a4049;
-    --success-bg:#e8f8ee; --success-text-soft:#15803d; --success-contrast:#ffffff; --success-border:#16a34a;
-    --danger-bg:#fde8e8; --danger-border:#dc2626;
-    --summary-bg:#fdf1dc; --summary-text:#92400e;
-    --texture-stripe: rgba(0,0,0,0.02);
+  body.dark-mode{
+    --bg:#0d1513; --panel:#152220; --panel-alt:#1c2c29; --border:#2b3b37; --border-lt:#3d4f4a;
+    --accent:#2dd4bf; --accent-dim:#164a44; --success:#34d399; --danger:#f87171; --text:#e7f0ee; --text-dim:#93a19c;
+    --input-bg:#0a100e; --input-readonly-bg:#1c2c29; --input-readonly-text:#c3ceca;
+    --success-bg:#12261e; --success-text-soft:#6ee7b7; --success-contrast:#0a100e; --success-border:#1f9d55;
+    --danger-bg:#2a1414; --danger-border:#5c2323;
+    --summary-bg:#132623; --summary-text:#7fe3d4;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html{ height:100%; }
@@ -43,7 +41,6 @@
     padding-bottom:calc(12px + env(safe-area-inset-bottom));
     padding-left:calc(12px + env(safe-area-inset-left));
     padding-right:calc(12px + env(safe-area-inset-right));
-    background-image:repeating-linear-gradient(0deg,var(--texture-stripe) 0px,var(--texture-stripe) 1px,transparent 1px,transparent 3px);
     transition: background-color 0.2s ease, color 0.2s ease;
     overscroll-behavior-y: contain;
   }
@@ -52,123 +49,129 @@
     -webkit-touch-callout:none; -webkit-user-select:none; user-select:none;
   }
   .panel{
-    background:var(--panel); border:2px solid var(--border); border-radius:4px;
-    padding:16px; width:100%; max-width:440px; margin-top:10px; box-shadow:4px 4px 0 rgba(0,0,0,0.35);
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:16px; width:100%; max-width:440px; margin-top:10px;
+    box-shadow:0 1px 2px rgba(15,35,30,0.04), 0 8px 24px rgba(15,35,30,0.06);
   }
   .topbar{
     display:flex; align-items:center; justify-content:space-between; width:100%; max-width:440px;
-    padding:8px 12px; background:var(--panel-alt); border:2px solid var(--border); border-radius:4px;
+    padding:9px 14px; background:var(--panel); border:1px solid var(--border); border-radius:12px;
+    box-shadow:0 1px 2px rgba(15,35,30,0.04);
   }
-  .brand{ font-weight:900; letter-spacing:1px; color:var(--accent); font-size:20px; text-transform:uppercase; cursor:pointer;}
-  .led{ display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--text-dim); margin-right:6px; vertical-align:middle;}
-  .led.ready{ background:var(--success); box-shadow:0 0 6px var(--success);}
-  .led.busy{ background:var(--accent); box-shadow:0 0 6px var(--accent); animation:pulse 0.9s infinite;}
-  .led.err{ background:var(--danger); box-shadow:0 0 6px var(--danger);}
+  .brand{ font-weight:700; color:var(--text); font-size:17px; cursor:pointer;}
+  .led{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--text-dim); margin-right:7px; vertical-align:middle;}
+  .led.ready{ background:var(--success); box-shadow:0 0 5px var(--success);}
+  .led.busy{ background:var(--accent); box-shadow:0 0 5px var(--accent); animation:pulse 0.9s infinite;}
+  .led.err{ background:var(--danger); box-shadow:0 0 5px var(--danger);}
   @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
-  .tag{ font-family:var(--mono); font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;}
+  .tag{ font-family:var(--mono); font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.06em;}
 
-  .section-label{ font-size:10px; font-weight:800; color:var(--text-dim); margin-bottom:6px; display:block; text-transform:uppercase; letter-spacing:1.5px; border-bottom:1px solid var(--border); padding-bottom:4px;}
+  .section-label{ font-size:10.5px; font-weight:700; color:var(--text-dim); margin-bottom:6px; display:block; text-transform:uppercase; letter-spacing:0.06em; border-bottom:1px solid var(--border); padding-bottom:4px;}
 
-  h3.screen-title{ color:var(--accent); text-transform:uppercase; letter-spacing:1.5px; font-size:16px; text-align:center; margin:4px 0 14px; }
+  h3.screen-title{ color:var(--accent); font-weight:700; font-size:17px; text-align:center; margin:4px 0 14px; }
   p.screen-sub{ color:var(--text-dim); font-size:12px; text-align:center; margin:-8px 0 14px; }
 
   .grid-outlets{ display:grid; grid-template-columns:repeat(4,1fr); gap:7px; max-height:52vh; overflow-y:auto; padding:4px 2px; -webkit-overflow-scrolling:touch; }
   .btn-outlet{
-    background:var(--panel-alt); color:var(--text); border:2px solid var(--border); border-radius:3px;
+    background:var(--panel-alt); color:var(--text); border:1px solid var(--border); border-radius:10px;
     padding:12px 4px; min-height:44px; display:flex; align-items:center; justify-content:center;
-    font-family:var(--mono); font-weight:700; font-size:12px; cursor:pointer; text-align:center;
+    font-family:var(--mono); font-weight:600; font-size:12px; cursor:pointer; text-align:center;
+    transition:transform 0.1s ease;
   }
-  .btn-outlet:active{ background:var(--accent); color:#14171c; border-color:var(--accent); transform:translate(1px,1px); }
-  .btn-outlet.current{ border-color:var(--accent); color:var(--accent); }
+  .btn-outlet:active{ background:var(--accent); color:#fff; border-color:var(--accent); transform:scale(0.96); }
+  .btn-outlet.current{ border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
 
   .pos-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
   .btn-pos{
-    background:var(--panel-alt); border:2px solid var(--border); border-radius:3px; padding:22px 8px;
-    color:var(--text); cursor:pointer; text-align:center;
+    background:var(--panel-alt); border:1px solid var(--border); border-radius:10px; padding:20px 8px;
+    color:var(--text); cursor:pointer; text-align:center; transition:transform 0.1s ease;
   }
-  .btn-pos .num{ font-family:var(--mono); font-size:30px; font-weight:900; color:var(--accent); display:block; }
-  .btn-pos .lbl{ font-size:10px; letter-spacing:1px; color:var(--text-dim); text-transform:uppercase; }
-  .btn-pos:active{ transform:translate(2px,2px); border-color:var(--accent); }
+  .btn-pos .num{ font-family:var(--mono); font-size:28px; font-weight:700; color:var(--accent); display:block; font-variant-numeric:tabular-nums; }
+  .btn-pos .lbl{ font-size:10px; letter-spacing:0.04em; color:var(--text-dim); text-transform:uppercase; margin-top:2px; display:block; }
+  .btn-pos:active{ transform:scale(0.97); border-color:var(--accent); }
 
   .btn-snap{
-    background:var(--accent); color:#14171c; border:2px solid var(--accent-dim); padding:16px; width:100%;
-    border-radius:3px; font-size:16px; font-weight:900; letter-spacing:1px; cursor:pointer; text-transform:uppercase;
-    box-shadow:3px 3px 0 rgba(0,0,0,0.4);
+    background:var(--accent); color:#fff; border:none; padding:15px; width:100%;
+    border-radius:10px; font-size:15px; font-weight:600; cursor:pointer;
+    box-shadow:0 1px 2px rgba(15,35,30,0.06), 0 4px 14px rgba(15,111,102,0.28);
+    transition:transform 0.1s ease, box-shadow 0.1s ease;
   }
-  .btn-snap:active{ transform:translate(2px,2px); box-shadow:1px 1px 0 rgba(0,0,0,0.4); }
+  .btn-snap:active{ transform:scale(0.98); box-shadow:0 1px 2px rgba(15,35,30,0.06); }
   .btn-manual, .btn-retry{
-    background:var(--panel-alt); color:var(--text); border:2px solid var(--border); padding:11px;
-    width:100%; border-radius:3px; font-size:12px; font-weight:800; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px;
+    background:var(--panel-alt); color:var(--text); border:1px solid var(--border); padding:11px;
+    width:100%; border-radius:10px; font-size:12.5px; font-weight:600; cursor:pointer;
+    transition:transform 0.1s ease;
   }
-  .btn-retry{ color:var(--accent); border-color:var(--accent-dim); display:none; }
+  .btn-retry{ color:var(--accent); border-color:var(--accent); display:none; }
   .btn-retry.show{ display:block; }
-  .btn-manual:active, .btn-retry:active{ transform:translate(1px,1px); }
+  .btn-manual:active, .btn-retry:active{ transform:scale(0.98); }
 
   .action-area{ display:flex; flex-direction:column; gap:8px; margin:14px 0; }
   .action-area.processing{ opacity:0.5; pointer-events:none; }
 
-  .digital-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; background:var(--panel-alt); padding:12px; border:1px solid var(--border); border-radius:3px; margin-bottom:12px;}
+  .digital-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; background:var(--panel-alt); padding:12px; border:1px solid var(--border); border-radius:10px; margin-bottom:12px;}
   .digital-grid > div{ display:flex; flex-direction:column; }
-  .digital-grid span{ font-size:9px; font-weight:800; color:var(--text-dim); letter-spacing:0.5px; margin-bottom:3px;}
+  .digital-grid span{ font-size:9px; font-weight:700; color:var(--text-dim); letter-spacing:0.04em; margin-bottom:3px;}
 
   input[type="number"]{
-    width:100%; padding:10px; border-radius:3px; border:2px solid var(--border); font-size:16px; font-weight:700;
-    font-family:var(--mono); background:var(--input-bg); color:var(--accent); outline:none;
+    width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); font-size:16px; font-weight:600;
+    font-family:var(--mono); background:var(--input-bg); color:var(--accent); outline:none; font-variant-numeric:tabular-nums;
   }
   input[readonly]{ background:var(--input-readonly-bg); color:var(--input-readonly-text); border-color:var(--border); }
 
   .total-card{
-    background:var(--success-bg); padding:16px; border-radius:4px; border:2px solid var(--success); text-align:center;
+    background:var(--success-bg); padding:16px; border-radius:12px; border:1px solid var(--success); text-align:center;
   }
   .total-card .tag{ color:var(--success-text-soft); }
-  #resBank{ color:var(--success); font-size:28px; font-weight:900; display:block; font-family:var(--mono); margin-top:4px;}
+  #resBank{ color:var(--success); font-size:27px; font-weight:700; display:block; font-family:var(--mono); margin-top:4px; font-variant-numeric:tabular-nums;}
 
-  .btn-confirm{ background:var(--success); color:var(--success-contrast); border:2px solid var(--success-border); padding:14px; width:100%; border-radius:3px; font-weight:900; font-size:14px; margin-top:10px; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px;}
-  .btn-cancel{ background:var(--danger-bg); color:var(--danger); border:2px solid var(--danger-border); padding:11px; width:100%; border-radius:3px; font-weight:800; margin-top:8px; cursor:pointer; text-transform:uppercase; font-size:12px; letter-spacing:0.5px;}
-  .btn-confirm:active,.btn-cancel:active{ transform:translate(1px,1px); }
+  .btn-confirm{ background:var(--success); color:var(--success-contrast); border:none; padding:13px; width:100%; border-radius:10px; font-weight:600; font-size:14px; margin-top:10px; cursor:pointer; transition:transform 0.1s ease;}
+  .btn-cancel{ background:var(--danger-bg); color:var(--danger); border:1px solid var(--danger-border); padding:11px; width:100%; border-radius:10px; font-weight:600; margin-top:8px; cursor:pointer; font-size:13px; transition:transform 0.1s ease;}
+  .btn-confirm:active,.btn-cancel:active{ transform:scale(0.98); }
 
   .settings-row{ display:flex; gap:8px; margin-top:8px; }
   .btn-mini{
     flex:1; background:var(--panel-alt); color:var(--text-dim); border:1px solid var(--border); padding:10px 4px;
     min-height:40px; display:flex; align-items:center; justify-content:center;
-    border-radius:3px; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; cursor:pointer; text-align:center;
+    border-radius:9px; font-size:10.5px; font-weight:600; letter-spacing:0.03em; cursor:pointer; text-align:center;
+    transition:transform 0.1s ease;
   }
-  .btn-mini:active{ color:var(--accent); border-color:var(--accent-dim); }
+  .btn-mini:active{ color:var(--accent); border-color:var(--accent); transform:scale(0.97); }
 
-  .history-card{ margin-top:16px; width:100%; max-width:440px; background:var(--panel); border:2px solid var(--border); border-radius:4px; padding:12px; margin-bottom:30px;}
+  .history-card{ margin-top:16px; width:100%; max-width:440px; background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:12px; margin-bottom:30px;}
   table{ width:100%; border-collapse:collapse; font-size:11px; font-family:var(--mono); }
-  th{ text-align:left; color:var(--text-dim); padding-bottom:6px; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border);}
+  th{ text-align:left; color:var(--text-dim); padding-bottom:6px; font-size:9px; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border);}
   td{ padding:8px 2px; border-top:1px solid var(--border); color:var(--text);}
-  .btn-edit{ color:var(--accent); font-weight:700; cursor:pointer; margin-right:10px;}
-  .btn-del{ color:var(--danger); font-weight:700; cursor:pointer;}
+  .btn-edit{ color:var(--accent); font-weight:600; cursor:pointer; margin-right:10px;}
+  .btn-del{ color:var(--danger); font-weight:600; cursor:pointer;}
 
-  .daily-summary-row{ background:var(--summary-bg); border-top:2px solid var(--accent-dim);}
+  .daily-summary-row{ background:var(--summary-bg); border-top:1px solid var(--accent);}
   .daily-summary-content{ padding:10px 2px !important; font-size:10px; color:var(--summary-text); line-height:1.5;}
-  .summary-title{ font-weight:900; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:4px; letter-spacing:0.5px;}
+  .summary-title{ font-weight:700; color:var(--accent); display:block; margin-bottom:4px;}
 
-  #reviewModal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:1000; align-items:center; justify-content:center; padding:15px;}
-  .modal-content{ background:var(--panel); width:100%; max-width:400px; border:2px solid var(--border); border-radius:4px; padding:18px; max-height:90vh; overflow-y:auto; box-shadow:4px 4px 0 rgba(0,0,0,0.4);}
-  .modal-header{ font-weight:900; font-size:16px; color:var(--accent); margin-bottom:14px; text-align:center; text-transform:uppercase; letter-spacing:1px;}
+  #reviewModal{ display:none; position:fixed; inset:0; background:rgba(12,24,21,0.5); z-index:1000; align-items:center; justify-content:center; padding:15px;}
+  .modal-content{ background:var(--panel); width:100%; max-width:400px; border:1px solid var(--border); border-radius:16px; padding:20px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 50px rgba(15,35,30,0.2);}
+  .modal-header{ font-weight:700; font-size:16px; color:var(--accent); margin-bottom:14px; text-align:center;}
 
-  .progress-container{ width:100%; height:6px; background:var(--panel-alt); border:1px solid var(--border); border-radius:2px; margin:10px 0; display:none; overflow:hidden;}
+  .progress-container{ width:100%; height:6px; background:var(--panel-alt); border:1px solid var(--border); border-radius:6px; margin:10px 0; display:none; overflow:hidden;}
   #progressBar{ width:0%; height:100%; background:var(--accent); transition:width 0.3s ease;}
 
-  #debugWin{ display:none; background:#000; color:#3ecf3e; font-family:var(--mono); font-size:10px; padding:10px; margin-top:12px; border:1px solid var(--border); border-radius:3px; overflow:auto; white-space:pre-wrap; max-height:150px;}
+  #debugWin{ display:none; background:#000; color:#3ecf3e; font-family:var(--mono); font-size:10px; padding:10px; margin-top:12px; border:1px solid var(--border); border-radius:8px; overflow:auto; white-space:pre-wrap; max-height:150px;}
   input[type="file"], canvas{ display:none;}
   .screen{ display:none; }
   .screen.active{ display:block; }
 
   input[type="date"]{
-    width:100%; padding:10px 9px; min-height:44px; border-radius:3px; border:2px solid var(--border); font-size:16px; font-weight:700;
+    width:100%; padding:10px 9px; min-height:44px; border-radius:10px; border:1px solid var(--border); font-size:16px; font-weight:600;
     font-family:var(--mono); background:var(--input-bg); color:var(--accent); outline:none;
   }
   .float-row{ display:none; align-items:center; gap:8px; margin:10px 0; }
   .float-row .section-label{ flex-shrink:0; border:none; padding:0; margin:0; white-space:nowrap; }
   .btn-toggle{
     flex:1; background:var(--panel-alt); border:1px solid var(--border); color:var(--text-dim); font-size:10px;
-    font-weight:800; padding:8px 4px; border-radius:3px; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px; text-align:center;
+    font-weight:600; padding:8px 4px; border-radius:9px; cursor:pointer; letter-spacing:0.03em; text-align:center;
   }
-  .btn-toggle.on{ color:var(--accent); border-color:var(--accent-dim); background:var(--summary-bg); }
+  .btn-toggle.on{ color:var(--accent); border-color:var(--accent); background:var(--summary-bg); }
   #printArea{ display:none; }
   @media print{
     body *{ visibility:hidden; }
@@ -178,7 +181,7 @@
 </style>
 </head>
 <body>
-<script>if (localStorage.getItem('tk_theme') === 'light') { document.body.classList.add('light-mode'); }</script>
+<script>if (localStorage.getItem('tk_theme') === 'dark') { document.body.classList.add('dark-mode'); }</script>
 
 <!-- ===== SETUP: OUTLET SELECT ===== -->
 <div id="setupOutletScreen" class="screen panel">
@@ -188,7 +191,7 @@
   <h3 class="screen-title">Select Outlet</h3>
   <p class="screen-sub">Each outlet keeps its own separate closing data</p>
   <div class="grid-outlets" id="outletGrid"></div>
-  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.5</p>
+  <p style="text-align:center; font-size:10px; color:var(--text-dim); margin-top:12px; font-family:var(--mono);">v2.8</p>
 </div>
 
 <!-- ===== SETUP: POS COUNT SELECT ===== -->
@@ -201,7 +204,7 @@
     <div class="btn-pos" onclick="choosePOS(3)"><span class="num">3</span><span class="lbl">POS &middot; bundle 6</span></div>
     <div class="btn-pos" onclick="choosePOS(4)"><span class="num">4</span><span class="lbl">POS &middot; bundle 8</span></div>
   </div>
-  <button class="btn-mini" style="width:100%;padding:10px;" onclick="showScreen('setupOutlet')">&larr; BACK TO OUTLET LIST</button>
+  <button class="btn-mini" style="width:100%;padding:10px;" onclick="showScreen('setupOutlet')">&larr; Back to outlet list</button>
 </div>
 
 <!-- ===== REVIEW / MANUAL ENTRY MODAL ===== -->
@@ -228,28 +231,28 @@
       <div><span>VISA</span><input type="number" id="temp_val_VISA" step="0.01" inputmode="decimal" onfocus="this.select()"></div>
       <div><span>VOUCHER</span><input type="number" id="temp_val_VOUCHER" step="0.01" inputmode="decimal" onfocus="this.select()"></div>
     </div>
-    <button class="btn-confirm" onclick="confirmScan()">SAVE ENTRY</button>
-    <button class="btn-cancel" onclick="closeModal()">DISCARD</button>
+    <button class="btn-confirm" onclick="confirmScan()">Save entry</button>
+    <button class="btn-cancel" onclick="closeModal()">Discard</button>
   </div>
 </div>
 
 <!-- ===== CROP MODAL ===== -->
 <div id="cropModal" style="display:none; position:fixed; inset:0; background:#000; z-index:2000; flex-direction:column;">
-  <div style="padding:calc(12px + env(safe-area-inset-top)) 14px 12px; text-align:center; color:var(--accent); font-weight:800; text-transform:uppercase; letter-spacing:1px; font-size:12px; background:var(--panel-alt); border-bottom:2px solid var(--border);">DRAG A BOX AROUND THE RECEIPT ONLY</div>
+  <div style="padding:calc(12px + env(safe-area-inset-top)) 14px 12px; text-align:center; color:var(--accent); font-weight:700; font-size:13px; background:var(--panel-alt); border-bottom:1px solid var(--border);">Drag a box around the receipt only</div>
   <div id="cropStage" style="position:relative; flex:1; overflow:hidden; touch-action:none; background:#000;">
     <img id="cropImg" style="position:absolute; top:0; left:0; max-width:100%; max-height:100%; user-select:none; -webkit-user-drag:none; pointer-events:none;">
     <div id="cropBox" style="position:absolute; border:2px solid var(--accent); background:rgba(255,176,32,0.15); display:none; pointer-events:none;"></div>
   </div>
   <div style="padding:12px 12px calc(12px + env(safe-area-inset-bottom)); display:flex; gap:8px; background:var(--panel-alt); border-top:2px solid var(--border);">
-    <button class="btn-cancel" style="flex:1; margin-top:0;" onclick="cancelCrop()">CANCEL</button>
-    <button class="btn-confirm" style="flex:1; margin-top:0;" onclick="confirmCropAndScan()">USE THIS AREA</button>
+    <button class="btn-cancel" style="flex:1; margin-top:0;" onclick="cancelCrop()">Cancel</button>
+    <button class="btn-confirm" style="flex:1; margin-top:0;" onclick="confirmCropAndScan()">Use this area</button>
   </div>
 </div>
 
 <!-- ===== MAIN APP ===== -->
 <div id="mainApp" style="display:none; width:100%; display:flex; flex-direction:column; align-items:center;">
   <div class="topbar">
-    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.5</span></span>
+    <span class="brand" onclick="toggleDebug()">TutupKedai <span style="font-size:10px; color:var(--text-dim); font-weight:700; vertical-align:middle;">v2.8</span></span>
     <div style="display:flex; align-items:center; gap:8px;">
       <span class="tag"><span class="led ready" id="statusLed"></span><span id="outletHeaderLabel">--</span> / <span id="posHeaderLabel">--</span></span>
       <span class="tag" id="syncTag" title="Google Drive sync status"></span>
@@ -263,10 +266,10 @@
       <input type="date" id="sessionDateInput" onchange="setSessionDate(this.value)">
     </div>
     <div class="action-area" id="actionArea">
-      <label class="btn-snap">SNAP RECEIPT<input type="file" accept="image/*" capture="environment" onchange="processImage(this)"></label>
-      <button class="btn-manual" onclick="openManual()">MANUAL ENTRY</button>
-      <button class="btn-retry" id="retryBtn" onclick="retryLastScan()">RE-SCAN &middot; TRY HARDER (STILL WRONG?)</button>
-      <button class="btn-retry" id="recropBtn" onclick="reopenCropForLastImage()">ADJUST CROP &amp; RE-SCAN</button>
+      <label class="btn-snap">Snap receipt<input type="file" accept="image/*" capture="environment" onchange="processImage(this)"></label>
+      <button class="btn-manual" onclick="openManual()">Manual entry</button>
+      <button class="btn-retry" id="retryBtn" onclick="retryLastScan()">Re-scan &middot; try harder (still wrong?)</button>
+      <button class="btn-retry" id="recropBtn" onclick="reopenCropForLastImage()">Adjust crop &amp; re-scan</button>
     </div>
 
     <div class="progress-container" id="progressWrapper"><div id="progressBar"></div></div>
@@ -302,22 +305,22 @@
         <input type="number" id="floatAmountInput" step="1" inputmode="decimal" value="300" onchange="updateFloatAmount(this.value)">
       </div>
       <div class="settings-row">
-        <div class="btn-toggle" id="floatToggleBtn" onclick="toggleFloatEditable()">EDITABLE FLOAT: OFF</div>
+        <div class="btn-toggle" id="floatToggleBtn" onclick="toggleFloatEditable()">Editable float: Off</div>
       </div>
 
       <div class="settings-row">
-        <div class="btn-mini" onclick="switchOutlet()">SWITCH OUTLET</div>
-        <div class="btn-mini" onclick="changePOSCount()">CHANGE POS</div>
+        <div class="btn-mini" onclick="switchOutlet()">Switch outlet</div>
+        <div class="btn-mini" onclick="changePOSCount()">Change POS</div>
       </div>
       <div class="settings-row">
-        <div class="btn-mini" onclick="exportCSV()">EXPORT CSV</div>
-        <div class="btn-mini" onclick="exportPDF()">EXPORT PDF</div>
+        <div class="btn-mini" onclick="exportCSV()">Export CSV</div>
+        <div class="btn-mini" onclick="exportPDF()">Export PDF</div>
       </div>
       <div class="settings-row" id="undoRow" style="display:none;">
-        <div class="btn-mini" onclick="undoReset()">UNDO LAST RESET</div>
+        <div class="btn-mini" onclick="undoReset()">Undo last reset</div>
       </div>
       <div style="margin-top:8px;">
-        <button class="btn-cancel" onclick="confirmClear()">RESET THIS OUTLET'S DATA</button>
+        <button class="btn-cancel" onclick="confirmClear()">Reset this outlet's data</button>
       </div>
     </div>
   </div>
@@ -560,12 +563,12 @@ function refreshFloatUI() {
     const row = document.getElementById('floatRow');
     const input = document.getElementById('floatAmountInput');
     if (cfg.floatEditable) {
-        btn.innerText = 'EDITABLE FLOAT: ON';
+        btn.innerText = 'Editable float: On';
         btn.classList.add('on');
         row.style.display = 'flex';
         input.value = cfg.floatAmount || 300;
     } else {
-        btn.innerText = 'EDITABLE FLOAT: OFF';
+        btn.innerText = 'Editable float: Off';
         btn.classList.remove('on');
         row.style.display = 'none';
     }
@@ -581,8 +584,8 @@ function todayStr() {
 }
 
 function toggleTheme() {
-    const isLight = document.body.classList.toggle('light-mode');
-    localStorage.setItem('tk_theme', isLight ? 'light' : 'dark');
+    const isDark = document.body.classList.toggle('dark-mode');
+    localStorage.setItem('tk_theme', isDark ? 'dark' : 'light');
 }
 
 if ('serviceWorker' in navigator) {
@@ -944,11 +947,17 @@ async function runOCR(img, mode, biasFactor, options) {
 // last 2 digits is treated as the decimal point; any earlier separators are
 // treated as thousands groupers and stripped, e.g. "2,370.15" -> 2370.15,
 // "304,70" -> 304.70.
+// Also tolerates OCR's common digit<->letter misreads on blurry/faded print
+// (O->0, S->5, B->8, I/L->1, G->6, Z->2): the match is widened to allow these
+// lookalikes, then normalized back to digits before parsing. Still requires
+// the punctuation + 2-trailing-char decimal shape, so it won't start matching
+// stray letters in label text.
+const DIGIT_LOOKALIKES = { O: '0', S: '5', B: '8', I: '1', L: '1', G: '6', Z: '2' };
 function extractAmountOnly(rawString) {
     if (!rawString) return 0;
-    const matches = rawString.match(/\d[\d,.]*[.,]\d{2}/g);
+    const matches = rawString.match(/[\dOSBILGZ][\dOSBILGZ,.]*[.,][\dOSBILGZ]{2}/g);
     if (!matches) return 0;
-    let raw = matches[matches.length - 1];
+    let raw = matches[matches.length - 1].replace(/[OSBILGZ]/g, ch => DIGIT_LOOKALIKES[ch]);
     let lastSepIdx = Math.max(raw.lastIndexOf('.'), raw.lastIndexOf(','));
     let intPart = raw.slice(0, lastSepIdx).replace(/[.,]/g, '');
     let decPart = raw.slice(lastSepIdx + 1);
@@ -960,6 +969,7 @@ function parseReceiptText(text) {
     let results = { total: 0, digital: {} };
     let inPaymentZone = false;
     let matchedCategories = 0;
+    let matchedSum = 0;
 
     for (let i = 0; i < rawLines.length; i++) {
         let line = rawLines[i];
@@ -969,7 +979,9 @@ function parseReceiptText(text) {
         if (inPaymentZone) {
             for (let [id, patterns] of Object.entries(digitalKeysMap)) {
                 if (patterns.some(p => line.includes(p))) {
-                    results.digital[id] = extractAmountOnly(line);
+                    let amt = extractAmountOnly(line);
+                    results.digital[id] = amt;
+                    matchedSum += amt;
                     isCategoryLine = true;
                     matchedCategories++;
                 }
@@ -978,12 +990,16 @@ function parseReceiptText(text) {
 
         // The "Total Count" label gets mangled differently almost every scan
         // (watermark placement varies), so matching its text isn't reliable.
-        // Instead: once most of the 7 known categories have been matched,
-        // the next line that (a) isn't itself a category and (b) has a real
-        // amount on it is treated as the total, regardless of its label text.
-        if (inPaymentZone && !isCategoryLine && matchedCategories >= 5) {
+        // Instead: once at least 2 of the 8 known categories have been matched
+        // (lowered from 5 - on a blurry receipt requiring most of the 8 to
+        // read cleanly meant the total was missed entirely even when the
+        // total line itself was legible), the next line that (a) isn't itself
+        // a category and (b) has an amount >= what's summed from matched
+        // categories so far (a plausibility floor standing in for the
+        // unreliable label match) is treated as the total.
+        if (inPaymentZone && !isCategoryLine && matchedCategories >= 2) {
             let amt = extractAmountOnly(line);
-            if (amt > 0) {
+            if (amt > 0 && amt >= matchedSum) {
                 results.total = amt;
                 inPaymentZone = false;
                 break;
