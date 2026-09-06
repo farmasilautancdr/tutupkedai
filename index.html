@@ -322,6 +322,9 @@
         <div class="btn-mini" onclick="exportCSV()">Export CSV</div>
         <div class="btn-mini" onclick="exportPDF()">Export PDF</div>
       </div>
+      <div class="settings-row">
+        <div class="btn-mini" id="saveSheetBtn" onclick="syncOutletToSheet(currentOutlet)">Save to Sheet</div>
+      </div>
       <div class="settings-row" id="undoRow" style="display:none;">
         <div class="btn-mini" onclick="undoReset()">Undo last reset</div>
       </div>
@@ -372,6 +375,7 @@ let lastCapturedImg = null;
 
 // ===== Google Drive sync (source of truth; localStorage is the offline cache) =====
 const API_BASE = 'api/outlet';
+const SHEET_API_BASE = 'api/sheet';
 
 function setSyncTag(state) {
     const el = document.getElementById('syncTag');
@@ -411,6 +415,30 @@ async function syncOutletToDrive(code) {
     } catch (e) {
         console.warn('Drive sync failed, changes stay local-only for now:', e);
         setSyncTag('err');
+    }
+}
+
+async function syncOutletToSheet(code) {
+    if (!code) return;
+    const btn = document.getElementById('saveSheetBtn');
+    const original = btn ? btn.innerText : null;
+    if (btn) { btn.innerText = 'Saving…'; btn.style.pointerEvents = 'none'; }
+    try {
+        const hist = (code === currentOutlet) ? scanHistory : JSON.parse(localStorage.getItem('tk_data_' + code) || '[]');
+        const res = await fetch(SHEET_API_BASE + '?code=' + encodeURIComponent(code), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config: outletConfig[code] || null, scanHistory: hist })
+        });
+        if (!res.ok) throw new Error('sheet save failed: ' + res.status);
+        if (btn) btn.innerText = 'Saved ✓';
+    } catch (e) {
+        console.warn('Sheet export failed:', e);
+        if (btn) btn.innerText = 'Failed ✗';
+    } finally {
+        if (btn) {
+            setTimeout(() => { btn.innerText = original; btn.style.pointerEvents = ''; }, 2000);
+        }
     }
 }
 
