@@ -16,52 +16,10 @@
 //   GOOGLE_PRIVATE_KEY       - service account private_key (with real or \n-escaped newlines)
 //   GOOGLE_DRIVE_FOLDER_ID   - Drive folder the service account was shared on
 
-const crypto = require('crypto');
+const { getAccessToken } = require('./lib/googleAuth');
+const { VALID_CODES } = require('./lib/outletCodes');
 
 const DATA_FILENAME = 'tutupkedai-data.json';
-
-// Mirrors `allOutlets` in index.html. Keep the two lists in sync.
-const VALID_CODES = new Set([
-  "AJ","B6","BB","BG","BJR","BP","CDR","CK","DG","DGD","GB","GBD","GM","HL","HQ","HQCT",
-  "JL","JLD","JTH","KB","KBKK","KBKS","KBTJ","KKR","KL","KMD","KMN","KMSK","KS","MC","MCD",
-  "MLR","MR","PC","PDM","PK","PM","PP","PPK","PSPD","PT","RJ","SLS","SMR","ST","TM","TMD",
-  "TMT","TPOH","TPT","WM"
-]);
-
-function base64url(input) {
-  return Buffer.from(input).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-async function getAccessToken() {
-  const email = process.env.GOOGLE_CLIENT_EMAIL;
-  const privateKey = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-  const now = Math.floor(Date.now() / 1000);
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const claim = {
-    iss: email,
-    scope: 'https://www.googleapis.com/auth/drive',
-    aud: 'https://oauth2.googleapis.com/token',
-    exp: now + 3600,
-    iat: now,
-  };
-  const unsigned = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(claim))}`;
-  const signer = crypto.createSign('RSA-SHA256');
-  signer.update(unsigned);
-  const signature = signer.sign(privateKey).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  const jwt = `${unsigned}.${signature}`;
-
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwt,
-    }),
-  });
-  const json = await tokenRes.json();
-  if (!tokenRes.ok) throw new Error('Google token exchange failed: ' + JSON.stringify(json));
-  return json.access_token;
-}
 
 async function findDataFile(token, folderId) {
   const q = `'${folderId}' in parents and name = '${DATA_FILENAME}' and trashed = false`;
@@ -105,7 +63,7 @@ module.exports = async (req, res) => {
     }
 
     const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-    const token = await getAccessToken();
+    const token = await getAccessToken('https://www.googleapis.com/auth/drive');
     const dataFile = await findDataFile(token, folderId);
 
     if (!dataFile) {
