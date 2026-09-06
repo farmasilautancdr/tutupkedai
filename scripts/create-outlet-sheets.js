@@ -13,7 +13,8 @@
 //        GOOGLE_DRIVE_FOLDER_ID       (same folder api/outlet.js uses)
 //        GOOGLE_SERVICE_ACCOUNT_EMAIL (same as GOOGLE_CLIENT_EMAIL in Vercel)
 //   3. Preview only:  node scripts/create-outlet-sheets.js --dry-run
-//      Create for real: node scripts/create-outlet-sheets.js
+//      One outlet only (recommended before a full run): node scripts/create-outlet-sheets.js --outlet=AJ
+//      Create for real (all outlets): node scripts/create-outlet-sheets.js
 //
 // Safe to re-run: skips any outlet code that already has a Sheet in the folder.
 
@@ -23,6 +24,8 @@ const { VALID_CODES } = require('../api/lib/outletCodes');
 const CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
 const FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
+const OUTLET_ARG = process.argv.find((a) => a.startsWith('--outlet='));
+const ONLY_OUTLET = OUTLET_ARG ? OUTLET_ARG.slice('--outlet='.length).toUpperCase() : null;
 const SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
 const DRY_RUN = process.argv.includes('--dry-run');
 const REDIRECT_PORT = 53682;
@@ -113,16 +116,22 @@ async function shareWithServiceAccount(token, fileId) {
 
 async function main() {
   requireEnv();
-  console.log(`${DRY_RUN ? '[DRY RUN] ' : ''}Outlets to process: ${VALID_CODES.size}`);
+  if (ONLY_OUTLET && !VALID_CODES.has(ONLY_OUTLET)) {
+    console.error(`Unknown outlet code: ${ONLY_OUTLET}`);
+    process.exit(1);
+  }
+  const codes = ONLY_OUTLET ? [ONLY_OUTLET] : [...VALID_CODES];
+
+  console.log(`${DRY_RUN ? '[DRY RUN] ' : ''}Outlets to process: ${codes.length}`);
   if (DRY_RUN) {
-    [...VALID_CODES].forEach((code) => console.log(' - ' + code));
+    codes.forEach((code) => console.log(' - ' + code));
     return;
   }
 
   const authCode = await getAuthCode();
   const token = await exchangeCodeForToken(authCode);
 
-  for (const code of VALID_CODES) {
+  for (const code of codes) {
     try {
       const existing = await findExistingSheet(token, code);
       if (existing) {
