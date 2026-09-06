@@ -1,0 +1,57 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { buildSheetRows } = require('./sheetRows');
+
+test('sorts by date, ties broken by original order, inserts merge + summary rows', () => {
+  const config = { posCount: 1, floatAmount: 300, floatEditable: false };
+  const scanHistory = [
+    { date: '2026-01-02', totalCount: 500, digital: { val_TRANSFER: 50 } },
+    { date: '2026-01-01', totalCount: 400, digital: { val_GRAB: 20 } },
+    { date: '2026-01-01', totalCount: 300, digital: {} },
+  ];
+
+  const { values, mergeRuns, summaryRowIndices, numCols } = buildSheetRows(config, scanHistory);
+
+  assert.equal(numCols, 13);
+  assert.equal(values.length, 5); // header + 3 receipts + 1 summary row
+  assert.deepEqual(values[0].slice(0, 4), ['#', 'Date', 'Bill Total', 'Digital Total']);
+
+  // row 1: first 2026-01-01 receipt (total 400, digital 20 -> net 80)
+  assert.equal(values[1][1], '2026-01-01');
+  assert.equal(values[1][2], 400);
+  assert.equal(values[1][12], 80);
+
+  // row 2: second 2026-01-01 receipt (total 300, digital 0 -> net 0)
+  assert.equal(values[2][1], '2026-01-01');
+  assert.equal(values[2][2], 300);
+  assert.equal(values[2][12], 0);
+
+  // row 3: daily summary after bundleSize=2 receipts
+  assert.equal(summaryRowIndices.length, 1);
+  assert.equal(summaryRowIndices[0], 3);
+  assert.match(values[3][0], /Daily Summary \(Receipts 1-2\)/);
+  assert.match(values[3][0], /Total RM700\.00/);
+  assert.match(values[3][0], /Cash \(Net\) RM80\.00/);
+  assert.match(values[3][0], /Digital RM20\.00/);
+  assert.match(values[3][0], /Grab: 20\.00/);
+
+  // row 4: 2026-01-02 receipt (total 500, digital 50 -> net 150)
+  assert.equal(values[4][1], '2026-01-02');
+  assert.equal(values[4][2], 500);
+  assert.equal(values[4][12], 150);
+
+  // date merge only for the two 2026-01-01 rows (rows 1-2); none for the lone 2026-01-02 row
+  assert.deepEqual(mergeRuns, [{ startRow: 1, endRow: 2 }]);
+});
+
+test('floatEditable false ignores a stale floatAmount and uses the 300 default', () => {
+  const config = { posCount: 1, floatAmount: 999, floatEditable: false };
+  const { values } = buildSheetRows(config, [{ date: '2026-01-01', totalCount: 400, digital: {} }]);
+  assert.equal(values[1][12], 100); // 400 - 0 - 300
+});
+
+test('floatEditable true uses the configured floatAmount', () => {
+  const config = { posCount: 1, floatAmount: 999, floatEditable: true };
+  const { values } = buildSheetRows(config, [{ date: '2026-01-01', totalCount: 1000, digital: {} }]);
+  assert.equal(values[1][12], 1); // 1000 - 0 - 999
+});
