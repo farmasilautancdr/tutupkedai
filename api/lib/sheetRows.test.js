@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildSheetRows } = require('./sheetRows');
+const { buildSheetRows, groupEntriesByMonth } = require('./sheetRows');
 
 test('sorts by date, ties broken by original order, inserts merge + summary rows', () => {
   const config = { posCount: 1, floatAmount: 300, floatEditable: false };
@@ -54,4 +54,29 @@ test('floatEditable true uses the configured floatAmount', () => {
   const config = { posCount: 1, floatAmount: 999, floatEditable: true };
   const { values } = buildSheetRows(config, [{ date: '2026-01-01', totalCount: 1000, digital: {} }]);
   assert.equal(values[1][12], 1); // 1000 - 0 - 999
+});
+
+test('groupEntriesByMonth splits by calendar month, sorted chronologically, titled "Mon YYYY"', () => {
+  const scanHistory = [
+    { date: '2026-09-02', totalCount: 100, digital: {} },
+    { date: '2026-08-25', totalCount: 200, digital: {} },
+    { date: '2026-08-26', totalCount: 300, digital: {} },
+  ];
+  const groups = groupEntriesByMonth(scanHistory);
+  assert.equal(groups.length, 2);
+  assert.equal(groups[0].key, '2026-08');
+  assert.equal(groups[0].title, 'Aug 2026');
+  assert.equal(groups[0].entries.length, 2);
+  assert.equal(groups[1].key, '2026-09');
+  assert.equal(groups[1].title, 'Sep 2026');
+  assert.equal(groups[1].entries.length, 1);
+});
+
+test('groupEntriesByMonth buckets missing/unparseable dates into "Undated"', () => {
+  const scanHistory = [{ date: '', totalCount: 100, digital: {} }, { totalCount: 50, digital: {} }];
+  const groups = groupEntriesByMonth(scanHistory);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].key, 'undated');
+  assert.equal(groups[0].title, 'Undated');
+  assert.equal(groups[0].entries.length, 2);
 });

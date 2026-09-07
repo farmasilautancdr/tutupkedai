@@ -1,20 +1,25 @@
 // Vercel serverless function: POST /api/sheet?code=<outletCode>
 // Writes one outlet's full scan history into a pre-created Google Sheet
-// (named exactly the outlet code) in the shared Drive folder, formatted
-// and sorted for human reading. Separate from api/outlet.js's automatic
-// JSON sync — this only runs when the "Save to Sheet" button is clicked.
+// (named exactly the outlet code) in the shared Drive folder, split into
+// one tab per calendar month ("Aug 2026", "Sep 2026", ...), auto-creating
+// any month tab that doesn't exist yet. Formatted and sorted for human
+// reading. Separate from api/outlet.js's automatic JSON sync — this only
+// runs when the "Save to Sheet" button is clicked.
 //
 // IMPORTANT: same Drive quota wall as api/outlet.js — the service account
-// cannot CREATE a new Sheet in this folder, only update one that already
-// exists. Each outlet's Sheet must be pre-created once (see
+// cannot CREATE a new Sheet FILE in this folder, only update one that
+// already exists. Each outlet's Sheet file must be pre-created once (see
 // scripts/create-outlet-sheets.js) and shared with the service account as
-// Editor before this endpoint works for that outlet.
+// Editor before this endpoint works for that outlet. Creating new TABS
+// inside an existing Sheet file (via spreadsheets.batchUpdate) is not
+// subject to that quota wall — the service account owns nothing there,
+// it's just editing a file it already has Editor access to.
 //
 // Required env vars: GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY, GOOGLE_DRIVE_FOLDER_ID
 
 const { getAccessToken } = require('./lib/googleAuth');
 const { VALID_CODES } = require('./lib/outletCodes');
-const { buildSheetRows } = require('./lib/sheetRows');
+const { buildSheetRows, groupEntriesByMonth } = require('./lib/sheetRows');
 
 const SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets'];
 const DATE_COL = 1; // 0-indexed column for date merges
@@ -30,15 +35,37 @@ async function findSheetFile(token, folderId, code) {
   return (json.files && json.files[0]) || null;
 }
 
-async function getSheetInfo(token, spreadsheetId) {
+async function getExistingTabs(token, spreadsheetId) {
   const res = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   const json = await res.json();
   if (!res.ok) throw new Error('Sheet info lookup failed: ' + JSON.stringify(json));
-  const props = json.sheets[0].properties;
-  return { sheetId: props.sheetId, title: props.title };
+  return json.sheets.map((s) => ({ sheetId: s.properties.sheetId, title: s.properties.title }));
+}
+
+// Creates any month tabs that don't exist yet. Returns a Map of title -> sheetId
+// covering every tab that will be written to (pre-existing + newly created).
+async function ensureMonthTabs(token, spreadsheetId, existingTabs, monthGroups) {
+  const byTitle = new Map(existingTabs.map((t) => [t.title, t.sheetId]));
+  const missing = monthGroups.filter((g) => !byTitle.has(g.title));
+  if (missing.length === 0) return byTitle;
+
+  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      requests: missing.map((g) => ({ addSheet: { properties: { title: g.title } } })),
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error('Adding month tab(s) failed: ' + JSON.stringify(json));
+
+  json.replies.forEach((reply, i) => {
+    byTitle.set(missing[i].title, reply.addSheet.properties.sheetId);
+  });
+  return byTitle;
 }
 
 async function clearAndWriteValues(token, spreadsheetId, title, values) {
@@ -97,11 +124,27 @@ function buildFormattingRequests(sheetId, { numRows, numCols, mergeRuns, summary
   }
 
   summaryRowIndices.forEach((rowIdx) => {
+    // Merge the whole row into one real cell (not just text overflowing into blank
+    // neighbors) so it stays readable regardless of column widths, and wrap since
+    // the summary text is long.
+    requests.push({
+      mergeCells: {
+        range: { sheetId, startRowIndex: rowIdx, endRowIndex: rowIdx + 1, startColumnIndex: 0, endColumnIndex: numCols },
+        mergeType: 'MERGE_ALL',
+      },
+    });
     requests.push({
       repeatCell: {
         range: { sheetId, startRowIndex: rowIdx, endRowIndex: rowIdx + 1, startColumnIndex: 0, endColumnIndex: numCols },
-        cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 1, green: 0.95, blue: 0.75 } } },
-        fields: 'userEnteredFormat(textFormat,backgroundColor)',
+        cell: {
+          userEnteredFormat: {
+            textFormat: { bold: true },
+            backgroundColor: { red: 1, green: 0.95, blue: 0.75 },
+            wrapStrategy: 'WRAP',
+            verticalAlignment: 'MIDDLE',
+          },
+        },
+        fields: 'userEnteredFormat(textFormat,backgroundColor,wrapStrategy,verticalAlignment)',
       },
     });
   });
@@ -166,14 +209,23 @@ module.exports = async (req, res) => {
     const config = body.config || null;
     const scanHistory = Array.isArray(body.scanHistory) ? body.scanHistory : [];
 
-    const { values, mergeRuns, summaryRowIndices, numCols } = buildSheetRows(config, scanHistory);
-    const { sheetId, title } = await getSheetInfo(token, file.id);
+    const monthGroups = groupEntriesByMonth(scanHistory);
+    const existingTabs = await getExistingTabs(token, file.id);
+    const sheetIdByTitle = await ensureMonthTabs(token, file.id, existingTabs, monthGroups);
 
-    await clearAndWriteValues(token, file.id, title, values);
-    const requests = buildFormattingRequests(sheetId, { numRows: values.length, numCols, mergeRuns, summaryRowIndices });
-    await applyFormatting(token, file.id, requests);
+    const tabsWritten = [];
+    for (const group of monthGroups) {
+      const { values, mergeRuns, summaryRowIndices, numCols } = buildSheetRows(config, group.entries);
+      const sheetId = sheetIdByTitle.get(group.title);
 
-    res.status(200).json({ ok: true, rows: values.length });
+      await clearAndWriteValues(token, file.id, group.title, values);
+      const requests = buildFormattingRequests(sheetId, { numRows: values.length, numCols, mergeRuns, summaryRowIndices });
+      await applyFormatting(token, file.id, requests);
+
+      tabsWritten.push({ title: group.title, rows: values.length });
+    }
+
+    res.status(200).json({ ok: true, tabs: tabsWritten });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });

@@ -4,6 +4,24 @@
 
 const CATEGORY_IDS = ['val_TRANSFER', 'val_GRAB', 'val_IPAY', 'val_MASTER', 'val_MISI', 'val_QRPAY', 'val_VISA', 'val_VOUCHER'];
 const CATEGORY_LABELS = ['Transfer', 'Grab', 'iPay', 'Master', 'Misi', 'QRPay', 'Visa', 'Voucher'];
+const MONTH_ABBREV = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Groups scanHistory entries by calendar month (keyed off entry.date's YYYY-MM),
+// one group per Google Sheet tab. Entries with a missing/unparseable date fall
+// into an 'Undated' tab rather than being silently dropped.
+function groupEntriesByMonth(scanHistory) {
+  const groups = new Map(); // key -> { title, entries }
+
+  scanHistory.forEach((entry) => {
+    const m = /^(\d{4})-(\d{2})/.exec(entry.date || '');
+    const key = m ? `${m[1]}-${m[2]}` : 'undated';
+    const title = m ? `${MONTH_ABBREV[Number(m[2]) - 1]} ${m[1]}` : 'Undated';
+    if (!groups.has(key)) groups.set(key, { key, title, entries: [] });
+    groups.get(key).entries.push(entry);
+  });
+
+  return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
 
 function buildSheetRows(config, scanHistory) {
   const cfg = config || {};
@@ -82,4 +100,4 @@ function buildSheetRows(config, scanHistory) {
   return { values, mergeRuns, summaryRowIndices, numCols: header.length };
 }
 
-module.exports = { buildSheetRows };
+module.exports = { buildSheetRows, groupEntriesByMonth };
