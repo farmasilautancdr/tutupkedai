@@ -23,6 +23,40 @@ function groupEntriesByMonth(scanHistory) {
   return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
 }
 
+// True only for a tab title this export could itself have created (the exact
+// "Mon YYYY" format from groupEntriesByMonth, or "Undated"). Used to decide
+// which stale tabs are safe to prune automatically - a tab a human named/added
+// by hand never matches this and is never touched.
+function isMonthTabTitle(title) {
+  if (title === 'Undated') return true;
+  const m = /^([A-Za-z]{3}) (\d{4})$/.exec(title);
+  return !!m && MONTH_ABBREV.includes(m[1]);
+}
+
+// Decides which month tabs to create/delete so the spreadsheet only ever
+// shows tabs for months the outlet currently has data for. Pure/testable:
+// takes plain title lists, no sheetId/network concerns.
+//
+// Never deletes a tab whose title isn't one this export could have created
+// (isMonthTabTitle), and never deletes the last tab in a spreadsheet a stale
+// tab is kept (untouched, later cleared to header-only by the caller) rather
+// than deleted if pruning it all would leave zero sheets.
+function planTabSync(existingTitles, desiredTitles) {
+  const desired = new Set(desiredTitles);
+  const stale = existingTitles.filter((t) => isMonthTabTitle(t) && !desired.has(t));
+  const toCreate = desiredTitles.filter((t) => !existingTitles.includes(t));
+
+  const finalCount = existingTitles.length + toCreate.length - stale.length;
+  let toDelete = stale;
+  let keepTitle = null;
+  if (finalCount < 1 && stale.length > 0) {
+    keepTitle = stale[stale.length - 1];
+    toDelete = stale.slice(0, -1);
+  }
+
+  return { toCreate, toDelete, keepTitle };
+}
+
 function buildSheetRows(config, scanHistory) {
   const cfg = config || {};
   const floatAmount = cfg.floatEditable ? (parseFloat(cfg.floatAmount) || 300) : 300;
@@ -100,4 +134,4 @@ function buildSheetRows(config, scanHistory) {
   return { values, mergeRuns, summaryRowIndices, numCols: header.length };
 }
 
-module.exports = { buildSheetRows, groupEntriesByMonth };
+module.exports = { buildSheetRows, groupEntriesByMonth, isMonthTabTitle, planTabSync };

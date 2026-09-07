@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildSheetRows, groupEntriesByMonth } = require('./sheetRows');
+const { buildSheetRows, groupEntriesByMonth, isMonthTabTitle, planTabSync } = require('./sheetRows');
 
 test('sorts by date, ties broken by original order, inserts merge + summary rows', () => {
   const config = { posCount: 1, floatAmount: 300, floatEditable: false };
@@ -79,4 +79,34 @@ test('groupEntriesByMonth buckets missing/unparseable dates into "Undated"', () 
   assert.equal(groups[0].key, 'undated');
   assert.equal(groups[0].title, 'Undated');
   assert.equal(groups[0].entries.length, 2);
+});
+
+test('isMonthTabTitle only matches our own "Mon YYYY"/"Undated" naming', () => {
+  assert.equal(isMonthTabTitle('Aug 2026'), true);
+  assert.equal(isMonthTabTitle('Undated'), true);
+  assert.equal(isMonthTabTitle('Sheet1'), false);
+  assert.equal(isMonthTabTitle('AJ'), false);
+  assert.equal(isMonthTabTitle('Xyz 2026'), false); // not a real month abbreviation
+  assert.equal(isMonthTabTitle('August 2026'), false); // full month name, not our format
+});
+
+test('planTabSync creates missing months and deletes stale month tabs, leaving non-month tabs alone', () => {
+  const plan = planTabSync(['Aug 2026', 'Sep 2026', 'Sheet1'], ['Sep 2026', 'Oct 2026']);
+  assert.deepEqual(plan.toCreate, ['Oct 2026']);
+  assert.deepEqual(plan.toDelete, ['Aug 2026']);
+  assert.equal(plan.keepTitle, null);
+});
+
+test('planTabSync keeps the last stale tab instead of deleting it, if deleting it all would leave zero sheets', () => {
+  const plan = planTabSync(['Aug 2026', 'Sep 2026'], []);
+  assert.deepEqual(plan.toCreate, []);
+  assert.deepEqual(plan.toDelete, ['Aug 2026']);
+  assert.equal(plan.keepTitle, 'Sep 2026');
+});
+
+test('planTabSync deletes every stale month tab when a non-month tab survives as the last sheet', () => {
+  const plan = planTabSync(['Aug 2026', 'Sep 2026', 'Sheet1'], []);
+  assert.deepEqual(plan.toCreate, []);
+  assert.deepEqual(plan.toDelete.sort(), ['Aug 2026', 'Sep 2026']);
+  assert.equal(plan.keepTitle, null);
 });

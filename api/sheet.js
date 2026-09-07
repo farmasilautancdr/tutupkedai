@@ -19,7 +19,7 @@
 
 const { getAccessToken } = require('./lib/googleAuth');
 const { VALID_CODES } = require('./lib/outletCodes');
-const { buildSheetRows, groupEntriesByMonth } = require('./lib/sheetRows');
+const { buildSheetRows, groupEntriesByMonth, planTabSync } = require('./lib/sheetRows');
 
 const SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets'];
 const DATE_COL = 1; // 0-indexed column for date merges
@@ -45,27 +45,42 @@ async function getExistingTabs(token, spreadsheetId) {
   return json.sheets.map((s) => ({ sheetId: s.properties.sheetId, title: s.properties.title }));
 }
 
-// Creates any month tabs that don't exist yet. Returns a Map of title -> sheetId
-// covering every tab that will be written to (pre-existing + newly created).
-async function ensureMonthTabs(token, spreadsheetId, existingTabs, monthGroups) {
+// Creates month tabs the outlet now has data for and don't exist yet, and
+// deletes month tabs (ones matching our "Mon YYYY"/"Undated" naming - see
+// isMonthTabTitle) that no longer have any matching data, so tabs don't pile
+// up forever after data is reset/edited. Never touches a tab that isn't our
+// own naming pattern. If pruning every stale tab would leave zero sheets,
+// the last one is kept (caller clears it to header-only) instead of deleted -
+// Sheets rejects a spreadsheet with no sheets at all.
+// Returns { sheetIdByTitle, keepTitle } - sheetIdByTitle covers every tab
+// that survives (pre-existing + newly created); keepTitle is the stale tab
+// left behind for the caller to clear, or null.
+async function syncMonthTabs(token, spreadsheetId, existingTabs, monthGroups) {
   const byTitle = new Map(existingTabs.map((t) => [t.title, t.sheetId]));
-  const missing = monthGroups.filter((g) => !byTitle.has(g.title));
-  if (missing.length === 0) return byTitle;
+  const plan = planTabSync(existingTabs.map((t) => t.title), monthGroups.map((g) => g.title));
 
-  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      requests: missing.map((g) => ({ addSheet: { properties: { title: g.title } } })),
-    }),
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error('Adding month tab(s) failed: ' + JSON.stringify(json));
+  const requests = [
+    ...plan.toCreate.map((title) => ({ addSheet: { properties: { title } } })),
+    ...plan.toDelete.map((title) => ({ deleteSheet: { sheetId: byTitle.get(title) } })),
+  ];
 
-  json.replies.forEach((reply, i) => {
-    byTitle.set(missing[i].title, reply.addSheet.properties.sheetId);
-  });
-  return byTitle;
+  if (requests.length > 0) {
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requests }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error('Syncing month tabs failed: ' + JSON.stringify(json));
+
+    let replyIdx = 0;
+    plan.toCreate.forEach((title) => {
+      byTitle.set(title, json.replies[replyIdx++].addSheet.properties.sheetId);
+    });
+    plan.toDelete.forEach((title) => byTitle.delete(title));
+  }
+
+  return { sheetIdByTitle: byTitle, keepTitle: plan.keepTitle };
 }
 
 async function clearAndWriteValues(token, spreadsheetId, title, values) {
@@ -211,7 +226,7 @@ module.exports = async (req, res) => {
 
     const monthGroups = groupEntriesByMonth(scanHistory);
     const existingTabs = await getExistingTabs(token, file.id);
-    const sheetIdByTitle = await ensureMonthTabs(token, file.id, existingTabs, monthGroups);
+    const { sheetIdByTitle, keepTitle } = await syncMonthTabs(token, file.id, existingTabs, monthGroups);
 
     const tabsWritten = [];
     for (const group of monthGroups) {
@@ -223,6 +238,16 @@ module.exports = async (req, res) => {
       await applyFormatting(token, file.id, requests);
 
       tabsWritten.push({ title: group.title, rows: values.length });
+    }
+
+    // Couldn't delete this stale tab without leaving the spreadsheet with zero
+    // sheets, so wipe its content back to header-only instead of leaving old data.
+    if (keepTitle) {
+      const { values, numCols } = buildSheetRows(config, []);
+      const sheetId = sheetIdByTitle.get(keepTitle);
+      await clearAndWriteValues(token, file.id, keepTitle, values);
+      await applyFormatting(token, file.id, buildFormattingRequests(sheetId, { numRows: values.length, numCols, mergeRuns: [], summaryRowIndices: [] }));
+      tabsWritten.push({ title: keepTitle, rows: values.length, note: 'cleared (no longer has data, kept as last remaining tab)' });
     }
 
     res.status(200).json({ ok: true, tabs: tabsWritten });
